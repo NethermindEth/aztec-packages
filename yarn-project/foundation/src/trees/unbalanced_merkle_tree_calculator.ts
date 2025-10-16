@@ -6,9 +6,10 @@ import { type TreeNodeLocation, UnbalancedTreeStore } from './unbalanced_tree_st
 export function computeCompressedUnbalancedMerkleTreeRoot(
   leaves: Buffer[],
   valueToCompress = Buffer.alloc(32),
+  emptyRoot = Buffer.alloc(32),
   hasher?: Hasher['hash'],
 ): Buffer {
-  const calculator = UnbalancedMerkleTreeCalculator.create(leaves, valueToCompress, hasher);
+  const calculator = UnbalancedMerkleTreeCalculator.create(leaves, valueToCompress, emptyRoot, hasher);
   return calculator.getRoot();
 }
 
@@ -32,12 +33,9 @@ export class UnbalancedMerkleTreeCalculator {
   public constructor(
     private readonly leaves: Buffer[],
     private readonly valueToCompress: Buffer,
+    private readonly emptyRoot: Buffer,
     private readonly hasher: Hasher['hash'],
   ) {
-    if (leaves.length === 0) {
-      throw Error('Cannot create a compressed unbalanced tree with 0 leaves.');
-    }
-
     this.store = new UnbalancedTreeStore(leaves.length);
     this.buildTree();
   }
@@ -45,9 +43,10 @@ export class UnbalancedMerkleTreeCalculator {
   static create(
     leaves: Buffer[],
     valueToCompress = Buffer.alloc(0),
+    emptyRoot = Buffer.alloc(32),
     hasher = (left: Buffer, right: Buffer) => sha256Trunc(Buffer.concat([left, right])) as Buffer<ArrayBuffer>,
   ) {
-    return new UnbalancedMerkleTreeCalculator(leaves, valueToCompress, hasher);
+    return new UnbalancedMerkleTreeCalculator(leaves, valueToCompress, emptyRoot, hasher);
   }
 
   /**
@@ -113,8 +112,8 @@ export class UnbalancedMerkleTreeCalculator {
     // Start with the leaves that are not compressed.
     let toProcess = this.leafLocations.filter((_, i) => !this.leaves[i].equals(this.valueToCompress));
     if (!toProcess.length) {
-      // All leaves are compressed. Set 0 to the root.
-      this.store.setNode({ level: 0, index: 0 }, { value: Buffer.alloc(32) });
+      // All leaves are compressed. Set empty root to the root.
+      this.store.setNode({ level: 0, index: 0 }, { value: this.emptyRoot });
       return;
     }
 
@@ -140,7 +139,7 @@ export class UnbalancedMerkleTreeCalculator {
           // The node becomes the parent if the sibling is a compressed leaf.
           const isLeaf = this.shiftNodeUp(location, parentLocation);
           if (!isLeaf) {
-            this.shiftChildrenUp(location);
+            this.shiftChildrenUp(location, parentLocation);
           }
         } else {
           // Hash the value with the (right) sibling and update the parent node.
@@ -171,24 +170,18 @@ export class UnbalancedMerkleTreeCalculator {
     return isLeaf;
   }
 
-  private shiftChildrenUp(parent: TreeNodeLocation) {
+  private shiftChildrenUp(parent: TreeNodeLocation, parentNewLocation: TreeNodeLocation) {
     const [left, right] = this.store.getChildLocations(parent);
+    const [leftNewLocation, rightNewLocation] = this.store.getChildLocations(parentNewLocation);
 
-    const level = parent.level;
-    const groupSize = 2 ** level;
-    const computeNewLocation = (index: number) => ({
-      level,
-      index: Math.floor(index / (groupSize * 2)) * groupSize + (index % groupSize),
-    });
-
-    const isLeftLeaf = this.shiftNodeUp(left, computeNewLocation(left.index));
-    const isRightLeaf = this.shiftNodeUp(right, computeNewLocation(right.index));
+    const isLeftLeaf = this.shiftNodeUp(left, leftNewLocation);
+    const isRightLeaf = this.shiftNodeUp(right, rightNewLocation);
 
     if (!isLeftLeaf) {
-      this.shiftChildrenUp(left);
+      this.shiftChildrenUp(left, leftNewLocation);
     }
     if (!isRightLeaf) {
-      this.shiftChildrenUp(right);
+      this.shiftChildrenUp(right, rightNewLocation);
     }
   }
 }

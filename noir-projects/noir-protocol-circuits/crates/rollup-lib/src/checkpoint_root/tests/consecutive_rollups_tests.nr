@@ -13,8 +13,7 @@ fn propagate_right_out_hash_when_left_is_zero() {
     let pi = builder.execute();
     builder.assert_expected_public_inputs(pi);
 
-    let checkpoint_header = builder.get_expected_checkpoint_header();
-    assert_eq(checkpoint_header.content_commitment.out_hash, 123);
+    assert_eq(pi.out_hash, 123);
 }
 
 #[test(should_fail_with = "Right rollup must not carry in_hash")]

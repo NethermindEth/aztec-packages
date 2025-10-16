@@ -20,12 +20,13 @@ pub struct CheckpointRollupPublicInputs {
     // Archive tree root after applying this checkpoint range.
     pub new_archive: AppendOnlyTreeSnapshot,
 
+    // Root of the tree composed of all `out_hash` values from blocks in this checkpoint. This root is combined with the
+    // `out_hash` values from other checkpoints within the same epoch to form a wonky tree, whose root becomes the final
+    // **root** `out_hash` stored on L1.
+    pub out_hash: Field,
+
     // Hashes of checkpoint headers for this checkpoint range.
     pub checkpoint_header_hashes: [Field; AZTEC_MAX_EPOCH_DURATION],
-
-    // TODO(#15793): Keep accumulating `out_hash` all the way up to the root rollup, and set the final hash on L1 when
-    // proving an epoch.
-    // pub out_hash: Field,
 
     // Concatenation of all coinbase and fees for each checkpoint in this checkpoint range.
     pub fees: [FeeRecipient; AZTEC_MAX_EPOCH_DURATION],
@@ -54,6 +55,7 @@ impl Empty for CheckpointRollupPublicInputs {
             constants: EpochConstantData::empty(),
             previous_archive: AppendOnlyTreeSnapshot::empty(),
             new_archive: AppendOnlyTreeSnapshot::empty(),
+            out_hash: 0,
             checkpoint_header_hashes: [0; AZTEC_MAX_EPOCH_DURATION],
             fees: [FeeRecipient::empty(); AZTEC_MAX_EPOCH_DURATION],
             start_blob_accumulator: BlobAccumulator::empty(),

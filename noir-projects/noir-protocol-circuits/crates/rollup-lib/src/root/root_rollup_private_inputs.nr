@@ -88,6 +88,7 @@ impl RootRollupPrivateInputs {
         RootRollupPublicInputs {
             previous_archive_root: merged.previous_archive.root,
             new_archive_root: merged.new_archive.root,
+            out_hash: merged.out_hash,
             checkpoint_header_hashes: merged.checkpoint_header_hashes,
             fees: merged.fees,
             constants: merged.constants,

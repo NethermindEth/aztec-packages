@@ -10,7 +10,6 @@ import {SafeCast} from "@oz/utils/math/SafeCast.sol";
 
 import {Registry} from "@aztec/governance/Registry.sol";
 import {Inbox} from "@aztec/core/messagebridge/Inbox.sol";
-import {Outbox} from "@aztec/core/messagebridge/Outbox.sol";
 import {Errors} from "@aztec/core/libraries/Errors.sol";
 import {ProposedHeader} from "@aztec/core/libraries/rollup/ProposedHeaderLib.sol";
 
@@ -91,7 +90,6 @@ contract RollupTest is RollupBase {
     rollup = IInstance(address(builder.getConfig().rollup));
 
     inbox = Inbox(address(rollup.getInbox()));
-    outbox = Outbox(address(rollup.getOutbox()));
 
     feeJuicePortal = FeeJuicePortal(address(rollup.getFeeAssetPortal()));
 
@@ -184,13 +182,6 @@ contract RollupTest is RollupBase {
     assertEq(rollup.getPendingBlockNumber(), 1, "Invalid pending block number");
     assertEq(rollup.getProvenBlockNumber(), 0, "Invalid proven block number");
 
-    // @note  Get the root that we have in the outbox.
-    //        We read it directly in storage because it is not yet proven, so the getter will give (0, 0).
-    //        The values are stored such that we can check that after pruning, and inserting a new block,
-    //        we will override it.
-    bytes32 rootMixed = vm.load(address(outbox), keccak256(abi.encode(1, 0)));
-    assertNotEq(rootMixed, bytes32(0), "Invalid root");
-
     rollup.prune();
     assertEq(inbox.getInProgress(), 3, "Invalid in progress");
     assertEq(rollup.getPendingBlockNumber(), 0, "Invalid pending block number");
@@ -208,10 +199,6 @@ contract RollupTest is RollupBase {
     assertEq(inbox.getRoot(2), inboxRoot2, "Invalid inbox root");
     assertEq(rollup.getPendingBlockNumber(), 1, "Invalid pending block number");
     assertEq(rollup.getProvenBlockNumber(), 0, "Invalid proven block number");
-
-    // We check that the roots in the outbox have correctly been updated.
-    bytes32 rootEmpty = vm.load(address(outbox), keccak256(abi.encode(1, 0)));
-    assertEq(rootEmpty, bytes32(0), "Invalid root");
   }
 
   function testTimestamp() public setUpFor("mixed_block_1") {
@@ -252,6 +239,7 @@ contract RollupTest is RollupBase {
   }
 
   function testExtraBlobs() public setUpFor("mixed_block_1") {
+    uint256 numExistingBlobs = 2;
     bytes32[] memory extraBlobHashes = new bytes32[](6);
     for (uint256 i = 0; i < extraBlobHashes.length; i++) {
       extraBlobHashes[i] = bytes32(
@@ -263,10 +251,10 @@ contract RollupTest is RollupBase {
 
     assertTrue(Rollup(address(rollup)).checkBlob());
     bytes32[] memory blobs = vm.getBlobhashes();
-    assertEq(blobs.length, 1 + extraBlobHashes.length);
+    assertEq(blobs.length, numExistingBlobs + extraBlobHashes.length);
     assertEq(blobs[0], this.getBlobHashes(load("mixed_block_1").block.blobCommitments)[0]);
     for (uint256 i = 0; i < extraBlobHashes.length; i++) {
-      assertEq(blobs[i + 1], extraBlobHashes[i]);
+      assertEq(blobs[i + numExistingBlobs], extraBlobHashes[i]);
     }
   }
 
@@ -597,31 +585,11 @@ contract RollupTest is RollupBase {
 
     BlockLog memory blockLog = rollup.getBlock(0);
 
-    PublicInputArgs memory args =
-      PublicInputArgs({previousArchive: blockLog.archive, endArchive: data.archive, proverId: address(0)});
-
-    bytes32[] memory fees = new bytes32[](Constants.AZTEC_MAX_EPOCH_DURATION * 2);
-
-    fees[0] = bytes32(uint256(uint160(address(0))));
-    fees[1] = bytes32(0);
-
-    bytes memory proof = "";
-
     vm.expectRevert(
       abi.encodeWithSelector(Errors.Rollup__StartAndEndNotSameEpoch.selector, Epoch.wrap(0), Epoch.wrap(1))
     );
 
-    rollup.submitEpochRootProof(
-      SubmitEpochRootProofArgs({
-        start: 1,
-        end: 2,
-        args: args,
-        fees: fees,
-        attestations: CommitteeAttestations({signatureIndices: "", signaturesOrAddresses: ""}),
-        blobInputs: data.batchedBlobInputs,
-        proof: proof
-      })
-    );
+    _submitEpochProof(1, 2, blockLog.archive, data.archive, data.batchedBlobInputs, address(0));
 
     assertEq(rollup.getPendingBlockNumber(), 2, "Invalid pending block number");
     assertEq(rollup.getProvenBlockNumber(), 0, "Invalid proven block number");
@@ -851,8 +819,24 @@ contract RollupTest is RollupBase {
     address _coinbase,
     uint256 _fee
   ) internal {
+    _submitEpochProofWithOutHashAndFee(
+      _start, _end, _prevArchive, _archive, _blobInputs, bytes32(0), _prover, _coinbase, _fee
+    );
+  }
+
+  function _submitEpochProofWithOutHashAndFee(
+    uint256 _start,
+    uint256 _end,
+    bytes32 _prevArchive,
+    bytes32 _archive,
+    bytes memory _blobInputs,
+    bytes32 _outHash,
+    address _prover,
+    address _coinbase,
+    uint256 _fee
+  ) internal {
     PublicInputArgs memory args =
-      PublicInputArgs({previousArchive: _prevArchive, endArchive: _archive, proverId: _prover});
+      PublicInputArgs({previousArchive: _prevArchive, endArchive: _archive, outHash: _outHash, proverId: _prover});
 
     bytes32[] memory fees = new bytes32[](Constants.AZTEC_MAX_EPOCH_DURATION * 2);
     fees[0] = bytes32(uint256(uint160(bytes20(_coinbase)))); // Need the address to be left padded within the bytes32

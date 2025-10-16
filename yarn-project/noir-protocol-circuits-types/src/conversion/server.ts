@@ -472,6 +472,7 @@ export function mapRootRollupPublicInputsFromNoir(
   return new RootRollupPublicInputs(
     mapFieldFromNoir(rootRollupPublicInputs.previous_archive_root),
     mapFieldFromNoir(rootRollupPublicInputs.new_archive_root),
+    mapFieldFromNoir(rootRollupPublicInputs.out_hash),
     mapTupleFromNoir(rootRollupPublicInputs.checkpoint_header_hashes, AZTEC_MAX_EPOCH_DURATION, mapFieldFromNoir),
     mapTupleFromNoir(rootRollupPublicInputs.fees, AZTEC_MAX_EPOCH_DURATION, mapFeeRecipientFromNoir),
     mapEpochConstantDataFromNoir(rootRollupPublicInputs.constants),
@@ -623,6 +624,7 @@ export function mapCheckpointRollupPublicInputsFromNoir(inputs: CheckpointRollup
     mapEpochConstantDataFromNoir(inputs.constants),
     mapAppendOnlyTreeSnapshotFromNoir(inputs.previous_archive),
     mapAppendOnlyTreeSnapshotFromNoir(inputs.new_archive),
+    mapFieldFromNoir(inputs.out_hash),
     mapTupleFromNoir(inputs.checkpoint_header_hashes, AZTEC_MAX_EPOCH_DURATION, mapFieldFromNoir),
     mapTupleFromNoir(inputs.fees, AZTEC_MAX_EPOCH_DURATION, mapFeeRecipientFromNoir),
     mapBlobAccumulatorFromNoir(inputs.start_blob_accumulator),
@@ -638,6 +640,7 @@ export function mapCheckpointRollupPublicInputsToNoir(
     constants: mapEpochConstantDataToNoir(inputs.constants),
     previous_archive: mapAppendOnlyTreeSnapshotToNoir(inputs.previousArchive),
     new_archive: mapAppendOnlyTreeSnapshotToNoir(inputs.newArchive),
+    out_hash: mapFieldToNoir(inputs.outHash),
     checkpoint_header_hashes: mapTuple(inputs.checkpointHeaderHashes, mapFieldToNoir),
     fees: mapTuple(inputs.fees, mapFeeRecipientToNoir),
     start_blob_accumulator: mapBlobAccumulatorToNoir(inputs.startBlobAccumulator),

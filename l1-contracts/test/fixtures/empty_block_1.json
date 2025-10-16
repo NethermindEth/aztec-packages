@@ -25,29 +25,26 @@
     "l2ToL1Messages": []
   },
   "block": {
-    "archive": "0x260c3adf5ce493884074c4277f4544844cfeb54f00c72f47b4338cadcb5c0b8d",
+    "archive": "0x05d0c10c4217b60c193cfda6c894b7425408791754ac6b4174575f5170abb947",
     "blobCommitments": "0x0183d27470dde07f76d48b7a2649d0e0470ece5b4bb789ead0018d75beee43d49b5494aadce0bd97af25e130ea8e2e34b7",
     "batchedBlobInputs": "0x0105787dfe45dce92e1fa720a458d3e14bee6fce9b73f6e8196825f49142d9cb2a8ea087412e4a8b29357d9e9c5b85edcf540f827eb75b397bf75b663480c94249681d0955dffa2b281bb84cd78926144d1ff9d995b9f4330fadcc097a1796b683d27470dde07f76d48b7a2649d0e0470ece5b4bb789ead0018d75beee43d49b5494aadce0bd97af25e130ea8e2e34b79514697b082a83078bb4369c0c43922a0c2aaeafab7ab0d97032581c552ab0110488a4505354d2a804e210da9010515b",
     "blockNumber": 1,
     "body": "0x00000000",
     "header": {
       "lastArchiveRoot": "0x1f8c805403d88ee809d3cb3e52eeba0a104f69968cdb844a9cbdf1e9e00b3a95",
-      "contentCommitment": {
-        "blobsHash": "0x00037077d6b94ce99fcfe346182c4bb458a304f075a4f09c8df75f7ce1caadbb",
-        "inHash": "0x00089a9d421a82c4a25f7acbebe69e638d5b064fa8a60e018793dcb0be53752c",
-        "outHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
-      },
+      "blobsHash": "0x00037077d6b94ce99fcfe346182c4bb458a304f075a4f09c8df75f7ce1caadbb",
+      "inHash": "0x00089a9d421a82c4a25f7acbebe69e638d5b064fa8a60e018793dcb0be53752c",
       "slotNumber": 102,
-      "timestamp": 1760351257,
-      "coinbase": "0x712ba2ecefa3586b7fe21fd00a2915e15a5dc4f9",
-      "feeRecipient": "0x11054aaf6d7aec40175319d4ebf7d57e23ad63bfa02c170a7ef9edf31da51d82",
+      "timestamp": 1760522657,
+      "coinbase": "0x1c7d80471fa9c69f6de716b9e615a7ea9b159946",
+      "feeRecipient": "0x2e44c74bfdb8172962e15da2ece89dec333b014dc8c0d87cfb39e9ca734eb39f",
       "gasFees": {
         "feePerDaGas": 0,
         "feePerL2Gas": 22470
       },
       "totalManaUsed": 0
     },
-    "headerHash": "0x002036b945cdc9137c16c668cf4f88aa8dfa930e8b05f451fa80bba4de4ccd70",
+    "headerHash": "0x00b301401f3e0193064ce935a2712baf216b2148aa2d24551c7df8ce9aee7071",
     "numTxs": 0
   }
 }

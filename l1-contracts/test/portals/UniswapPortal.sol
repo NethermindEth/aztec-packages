@@ -87,7 +87,7 @@ contract UniswapPortal {
         address(this),
         _inAmount,
         true,
-        _outboxMessageMetadata[0]._l2BlockNumber,
+        _outboxMessageMetadata[0]._epoch,
         _outboxMessageMetadata[0]._leafIndex,
         _outboxMessageMetadata[0]._path
       );
@@ -120,7 +120,7 @@ contract UniswapPortal {
           recipient: DataStructures.L1Actor(address(this), block.chainid),
           content: vars.contentHash
         }),
-        _outboxMessageMetadata[1]._l2BlockNumber,
+        _outboxMessageMetadata[1]._epoch,
         _outboxMessageMetadata[1]._leafIndex,
         _outboxMessageMetadata[1]._path
       );
@@ -190,7 +190,7 @@ contract UniswapPortal {
         address(this),
         _inAmount,
         true,
-        _outboxMessageMetadata[0]._l2BlockNumber,
+        _outboxMessageMetadata[0]._epoch,
         _outboxMessageMetadata[0]._leafIndex,
         _outboxMessageMetadata[0]._path
       );
@@ -222,7 +222,7 @@ contract UniswapPortal {
           recipient: DataStructures.L1Actor(address(this), block.chainid),
           content: vars.contentHash
         }),
-        _outboxMessageMetadata[1]._l2BlockNumber,
+        _outboxMessageMetadata[1]._epoch,
         _outboxMessageMetadata[1]._leafIndex,
         _outboxMessageMetadata[1]._path
       );

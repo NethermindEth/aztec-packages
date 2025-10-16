@@ -337,6 +337,7 @@ impl RollupFixtureBuilder {
             previous_archive: self.get_archive(start_slot_number as u32 - 1),
             new_archive: self.get_archive(end_slot_number as u32),
             checkpoint_header_hashes,
+            out_hash: self.get_out_hash(end_slot_number as u32),
             fees,
             start_blob_accumulator: self.get_blob_accumulator(start_slot_number - 1),
             end_blob_accumulator: self.get_blob_accumulator(end_slot_number),
@@ -395,8 +396,8 @@ impl RollupFixtureBuilder {
         tx_or_block_number as Field * 23
     }
 
-    fn get_out_hash(_self: Self, tx_or_block_number: u32) -> Field {
-        tx_or_block_number as Field * 60415
+    fn get_out_hash(_self: Self, tx_or_block_or_slot_number: u32) -> Field {
+        tx_or_block_or_slot_number as Field * 60415
     }
 
     fn get_in_hash(_self: Self, slot_number: Field) -> Field {

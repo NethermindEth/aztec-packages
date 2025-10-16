@@ -18,11 +18,7 @@ import { padArrayEnd } from '@aztec/foundation/collection';
 import { sha256ToField, sha256Trunc } from '@aztec/foundation/crypto';
 import { BLS12Point, Fr } from '@aztec/foundation/fields';
 import { type Bufferable, type Tuple, assertLength, toFriendlyJSON } from '@aztec/foundation/serialize';
-import {
-  MembershipWitness,
-  MerkleTreeCalculator,
-  computeCompressedUnbalancedMerkleTreeRoot,
-} from '@aztec/foundation/trees';
+import { MembershipWitness, MerkleTreeCalculator } from '@aztec/foundation/trees';
 import { getVkData } from '@aztec/noir-protocol-circuits-types/server/vks';
 import { getVKIndex, getVKSiblingPath } from '@aztec/noir-protocol-circuits-types/vk-tree';
 import { computeFeePayerBalanceLeafSlot } from '@aztec/protocol-contracts/fee-juice';
@@ -48,7 +44,6 @@ import {
 } from '@aztec/stdlib/trees';
 import {
   BlockHeader,
-  ContentCommitment,
   GlobalVariables,
   PartialStateReference,
   type ProcessedTx,
@@ -322,14 +317,9 @@ export const buildHeaderAndBodyFromTxs = runInSpan(
     const txEffects = txs.map(tx => tx.txEffect);
     const body = new Body(txEffects);
 
-    const txOutHashes = txEffects.map(tx => tx.txOutHash());
-    const outHash = txOutHashes.length === 0 ? Fr.ZERO : new Fr(computeCompressedUnbalancedMerkleTreeRoot(txOutHashes));
-
     const parityShaRoot = await computeInHashFromL1ToL2Messages(l1ToL2Messages);
     const blobFields = body.toBlobFields();
     const blobsHash = getBlobsHashFromBlobs(await Blob.getBlobsPerBlock(blobFields));
-
-    const contentCommitment = new ContentCommitment(blobsHash, parityShaRoot, outHash);
 
     const fees = txEffects.reduce((acc, tx) => acc.add(tx.transactionFee), Fr.ZERO);
     const manaUsed = txs.reduce((acc, tx) => acc.add(new Fr(tx.gasUsed.billedGas.l2Gas)), Fr.ZERO);
@@ -340,7 +330,8 @@ export const buildHeaderAndBodyFromTxs = runInSpan(
 
     const header = new L2BlockHeader(
       previousArchive,
-      contentCommitment,
+      blobsHash,
+      parityShaRoot,
       stateReference,
       globalVariables,
       fees,
@@ -387,7 +378,7 @@ export const buildBlockHeaderFromTxs = runInSpan(
   },
 );
 
-/** Computes the inHash for a block's ContentCommitment given its l1 to l2 messages. */
+/** Computes the inHash of a checkpoint given its l1 to l2 messages. */
 export async function computeInHashFromL1ToL2Messages(unpaddedL1ToL2Messages: Fr[]): Promise<Fr> {
   const l1ToL2Messages = padArrayEnd(unpaddedL1ToL2Messages, Fr.ZERO, NUMBER_OF_L1_L2_MESSAGES_PER_ROLLUP);
   const hasher = (left: Buffer, right: Buffer) =>

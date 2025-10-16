@@ -1,17 +1,17 @@
 use crate::{
     abis::gas_fees::GasFees,
     address::{AztecAddress, EthAddress},
-    constants::{PROPOSED_BLOCK_HEADER_LENGTH, PROPOSED_BLOCK_HEADER_LENGTH_BYTES},
-    content_commitment::ContentCommitment,
+    constants::{CHECKPOINT_HEADER_LENGTH, CHECKPOINT_HEADER_SIZE_IN_BYTES},
     hash::sha256_to_field,
-    traits::{Deserialize, Empty, Hash, Serialize, ToField},
+    traits::{Deserialize, Empty, FromField, Hash, Serialize, ToField},
 };
 use std::meta::derive;
 
 #[derive(Deserialize, Eq, Serialize)]
 pub struct CheckpointHeader {
     pub last_archive_root: Field,
-    pub content_commitment: ContentCommitment,
+    pub blobs_hash: Field,
+    pub in_hash: Field,
     pub slot_number: Field,
     // The timestamp of the slot. All blocks in the checkpoint must have a timestamp less than or equal to this value.
     pub timestamp: u64,
@@ -25,7 +25,8 @@ impl Empty for CheckpointHeader {
     fn empty() -> Self {
         Self {
             last_archive_root: 0,
-            content_commitment: ContentCommitment::empty(),
+            blobs_hash: 0,
+            in_hash: 0,
             slot_number: 0,
             timestamp: 0,
             coinbase: EthAddress::zero(),
@@ -37,13 +38,12 @@ impl Empty for CheckpointHeader {
 }
 
 impl CheckpointHeader {
-    pub fn to_be_bytes(self) -> [u8; PROPOSED_BLOCK_HEADER_LENGTH_BYTES] {
-        let mut bytes = [0; PROPOSED_BLOCK_HEADER_LENGTH_BYTES];
+    pub fn to_be_bytes(self) -> [u8; CHECKPOINT_HEADER_SIZE_IN_BYTES] {
+        let mut bytes = [0; CHECKPOINT_HEADER_SIZE_IN_BYTES];
 
         let last_archive_root_bytes: [u8; 32] = self.last_archive_root.to_be_bytes();
-        let blobs_hash_bytes: [u8; 32] = self.content_commitment.blobs_hash.to_be_bytes();
-        let in_hash_bytes: [u8; 32] = self.content_commitment.in_hash.to_be_bytes();
-        let out_hash_bytes: [u8; 32] = self.content_commitment.out_hash.to_be_bytes();
+        let blobs_hash_bytes: [u8; 32] = self.blobs_hash.to_be_bytes();
+        let in_hash_bytes: [u8; 32] = self.in_hash.to_be_bytes();
         let slot_number_bytes: [u8; 32] = self.slot_number.to_be_bytes();
         let coinbase_bytes: [u8; 20] = self.coinbase.to_be_bytes();
         let fee_recipient_bytes: [u8; 32] = self.fee_recipient.to_field().to_be_bytes();
@@ -57,31 +57,30 @@ impl CheckpointHeader {
             bytes[i] = last_archive_root_bytes[i];
             bytes[i + 32] = blobs_hash_bytes[i];
             bytes[i + 64] = in_hash_bytes[i];
-            bytes[i + 96] = out_hash_bytes[i];
-            bytes[i + 128] = slot_number_bytes[i];
+            bytes[i + 96] = slot_number_bytes[i];
         }
 
         let mut timestamp = self.timestamp;
         for i in 0..8 {
-            bytes[168 - 1 - i] = timestamp as u8;
+            bytes[136 - 1 - i] = timestamp as u8;
             timestamp = timestamp >> 8;
         }
 
         for i in 0..20 {
-            bytes[i + 168] = coinbase_bytes[i];
+            bytes[i + 136] = coinbase_bytes[i];
         }
 
         for i in 0..32 {
-            bytes[i + 188] = fee_recipient_bytes[i];
+            bytes[i + 156] = fee_recipient_bytes[i];
         }
 
         for i in 0..16 {
-            bytes[i + 220] = gas_fees_per_da_gas_bytes[i];
-            bytes[i + 236] = gas_fees_per_l2_gas_bytes[i];
+            bytes[i + 188] = gas_fees_per_da_gas_bytes[i];
+            bytes[i + 204] = gas_fees_per_l2_gas_bytes[i];
         }
 
         for i in 0..32 {
-            bytes[i + 252] = total_mana_used_bytes[i];
+            bytes[i + 220] = total_mana_used_bytes[i];
         }
 
         bytes
@@ -95,30 +94,26 @@ impl Hash for CheckpointHeader {
 }
 
 #[test]
-fn serde() {
-    let item = CheckpointHeader {
-        last_archive_root: 123,
-        content_commitment: ContentCommitment::empty(),
+fn serialization_and_hash_match_typescript() {
+    let header = CheckpointHeader {
+        last_archive_root: 123123,
+        blobs_hash: 886644,
+        in_hash: 335577,
         slot_number: 1234,
         timestamp: 5678,
-        coinbase: EthAddress::empty(),
-        fee_recipient: AztecAddress::empty(),
+        coinbase: EthAddress::from_field(2244),
+        fee_recipient: AztecAddress::from_field(6688),
         gas_fees: GasFees { fee_per_da_gas: 100, fee_per_l2_gas: 200 },
         total_mana_used: 151617,
     };
-    // We use the PROPOSED_BLOCK_HEADER_LENGTH constant to ensure that there is a match between the derived trait
+    // We use the CHECKPOINT_HEADER_LENGTH constant to ensure that there is a match between the derived trait
     // implementation and the constant.
-    let serialized: [Field; PROPOSED_BLOCK_HEADER_LENGTH] = item.serialize();
+    let serialized: [Field; CHECKPOINT_HEADER_LENGTH] = header.serialize();
     let deserialized = CheckpointHeader::deserialize(serialized);
-    assert(item.eq(deserialized));
-}
+    assert_eq(header, deserialized);
 
-#[test]
-fn hash_of_empty_checkpoint_header_match_typescript() {
-    let header = CheckpointHeader::empty();
-    let hash = header.hash();
-
-    // Value from proposed_block_header.test.ts "computes empty hash" test
-    let test_data_empty_hash = 0x00d72511e843bf5a2e44e8bd1da20c2626311d1d6679424f717807a1db731d62;
-    assert_eq(hash, test_data_empty_hash);
+    // Value from `checkpoint_header.test.ts`.
+    let checkpoint_header_hash_from_ts =
+        0x007dbd23ddcf53cb119bffded2cd032c4b6b593f66ad8702338aece2ef3fd33a;
+    assert_eq(header.hash(), checkpoint_header_hash_from_ts);
 }

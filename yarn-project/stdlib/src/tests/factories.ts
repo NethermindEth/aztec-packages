@@ -155,7 +155,6 @@ import { NullifierLeaf, NullifierLeafPreimage } from '../trees/nullifier_leaf.js
 import { PublicDataTreeLeaf, PublicDataTreeLeafPreimage } from '../trees/public_data_leaf.js';
 import { BlockHeader } from '../tx/block_header.js';
 import { CallContext } from '../tx/call_context.js';
-import { ContentCommitment } from '../tx/content_commitment.js';
 import { FunctionData } from '../tx/function_data.js';
 import { GlobalVariables } from '../tx/global_variables.js';
 import { PartialStateReference } from '../tx/partial_state_reference.js';
@@ -756,7 +755,8 @@ export function makeCheckpointRollupPublicInputs(seed = 0) {
     makeEpochConstantData(seed),
     makeAppendOnlyTreeSnapshot(seed + 0x100),
     makeAppendOnlyTreeSnapshot(seed + 0x200),
-    makeTuple(AZTEC_MAX_EPOCH_DURATION, () => fr(seed), 0x300),
+    fr(seed + 0x300),
+    makeTuple(AZTEC_MAX_EPOCH_DURATION, () => fr(seed), 0x400),
     makeTuple(AZTEC_MAX_EPOCH_DURATION, () => makeFeeRecipient(seed), 0x700),
     BlobAccumulator.fromBatchedBlobAccumulator(startBlobAccumulator),
     BlobAccumulator.fromBatchedBlobAccumulator(makeBatchedBlobAccumulator(seed + 1)),
@@ -792,18 +792,12 @@ export function makeRootRollupPublicInputs(seed = 0): RootRollupPublicInputs {
   return new RootRollupPublicInputs(
     fr(seed + 0x100),
     fr(seed + 0x200),
-    makeTuple(AZTEC_MAX_EPOCH_DURATION, () => fr(seed), 0x300),
+    fr(seed + 0x300),
+    makeTuple(AZTEC_MAX_EPOCH_DURATION, () => fr(seed), 0x400),
     makeTuple(AZTEC_MAX_EPOCH_DURATION, () => makeFeeRecipient(seed), 0x500),
     makeEpochConstantData(seed + 0x600),
     FinalBlobAccumulator.fromBatchedBlobAccumulator(makeBatchedBlobAccumulator(seed)),
   );
-}
-
-/**
- * Makes content commitment
- */
-export function makeContentCommitment(seed = 0): ContentCommitment {
-  return new ContentCommitment(fr(seed + 0x100), fr(seed + 0x200), fr(seed + 0x300));
 }
 
 /**
@@ -837,7 +831,8 @@ export function makeL2BlockHeader(
 ) {
   return new L2BlockHeader(
     makeAppendOnlyTreeSnapshot(seed + 0x100),
-    overrides?.contentCommitment ?? makeContentCommitment(seed + 0x200),
+    overrides?.blobsHash ?? fr(seed + 0x200),
+    overrides?.inHash ?? fr(seed + 0x300),
     overrides?.state ?? makeStateReference(seed + 0x600),
     makeGlobalVariables((seed += 0x700), {
       ...(blockNumber ? { blockNumber } : {}),
@@ -852,7 +847,8 @@ export function makeL2BlockHeader(
 export function makeCheckpointHeader(seed = 0) {
   return CheckpointHeader.from({
     lastArchiveRoot: fr(seed + 0x100),
-    contentCommitment: makeContentCommitment(seed + 0x200),
+    blobsHash: fr(seed + 0x200),
+    inHash: fr(seed + 0x300),
     slotNumber: new Fr(seed + 0x300),
     timestamp: BigInt(seed + 0x400),
     coinbase: makeEthAddress(seed + 0x500),
@@ -899,7 +895,7 @@ function makeCountedL2ToL1Message(seed = 0) {
   return new CountedL2ToL1Message(makeL2ToL1Message(seed), seed + 2);
 }
 
-function makeScopedL2ToL1Message(seed = 1) {
+export function makeScopedL2ToL1Message(seed = 1) {
   return new ScopedL2ToL1Message(makeL2ToL1Message(seed), makeAztecAddress(seed + 3));
 }
 
@@ -1548,6 +1544,7 @@ export async function makeBloatedProcessedTx({
   // The default gasUsed is the tx overhead.
   gasUsed = Gas.from({ daGas: FIXED_DA_GAS, l2Gas: FIXED_L2_GAS }),
   privateOnly = false,
+  avmAccumulatedData,
 }: {
   seed?: number;
   header?: BlockHeader;
@@ -1563,6 +1560,7 @@ export async function makeBloatedProcessedTx({
   feePaymentPublicDataWrite?: PublicDataWrite;
   gasUsed?: Gas;
   privateOnly?: boolean;
+  avmAccumulatedData?: Partial<FieldsOf<AvmAccumulatedData>>;
 } = {}) {
   seed *= 0x1000; // Avoid clashing with the previous mock values if seed only increases by 1.
   header ??= db?.getInitialHeader() ?? makeHeader(seed);
@@ -1644,18 +1642,22 @@ export async function makeBloatedProcessedTx({
     avmOutput.previousRevertibleAccumulatedDataArrayLengths =
       avmOutput.previousRevertibleAccumulatedData.getArrayLengths();
     // Assign final data emitted from avm.
-    avmOutput.accumulatedData.noteHashes = revertibleData.noteHashes;
-    avmOutput.accumulatedData.nullifiers = padArrayEnd(
-      nonRevertibleData.nullifiers.concat(revertibleData.nullifiers).filter(n => !n.isEmpty()),
-      Fr.ZERO,
-      MAX_NULLIFIERS_PER_TX,
-    );
-    avmOutput.accumulatedData.l2ToL1Msgs = revertibleData.l2ToL1Msgs;
-    avmOutput.accumulatedData.publicDataWrites = makeTuple(
-      MAX_TOTAL_PUBLIC_DATA_UPDATE_REQUESTS_PER_TX,
-      i => new PublicDataWrite(new Fr(i), new Fr(i + 10)),
-      seed + 0x2000,
-    );
+    avmOutput.accumulatedData.noteHashes = avmAccumulatedData?.noteHashes ?? revertibleData.noteHashes;
+    avmOutput.accumulatedData.nullifiers =
+      avmAccumulatedData?.nullifiers ??
+      padArrayEnd(
+        nonRevertibleData.nullifiers.concat(revertibleData.nullifiers).filter(n => !n.isEmpty()),
+        Fr.ZERO,
+        MAX_NULLIFIERS_PER_TX,
+      );
+    avmOutput.accumulatedData.l2ToL1Msgs = avmAccumulatedData?.l2ToL1Msgs ?? revertibleData.l2ToL1Msgs;
+    avmOutput.accumulatedData.publicDataWrites =
+      avmAccumulatedData?.publicDataWrites ??
+      makeTuple(
+        MAX_TOTAL_PUBLIC_DATA_UPDATE_REQUESTS_PER_TX,
+        i => new PublicDataWrite(new Fr(i), new Fr(i + 10)),
+        seed + 0x2000,
+      );
     avmOutput.accumulatedDataArrayLengths = avmOutput.accumulatedData.getArrayLengths();
     avmOutput.gasSettings = gasSettings;
     // Note: The fee is computed from the tx's gas used, which only includes the gas used in private. But this shouldn't

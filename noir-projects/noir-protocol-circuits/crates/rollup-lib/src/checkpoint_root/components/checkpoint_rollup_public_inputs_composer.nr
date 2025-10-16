@@ -12,7 +12,6 @@ use types::{
         fee_recipient::FeeRecipient,
     },
     constants::{AZTEC_MAX_EPOCH_DURATION, FIELDS_PER_BLOB},
-    content_commitment::ContentCommitment,
     traits::{Empty, Hash},
 };
 
@@ -75,6 +74,7 @@ impl<let NumBlobs: u32> CheckpointRollupPublicInputsComposer<NumBlobs> {
             constants,
             previous_archive: merged_rollup.previous_archive,
             new_archive: merged_rollup.new_archive,
+            out_hash: merged_rollup.out_hash,
             checkpoint_header_hashes,
             fees,
             start_blob_accumulator: self.start_blob_accumulator,
@@ -87,15 +87,10 @@ impl<let NumBlobs: u32> CheckpointRollupPublicInputsComposer<NumBlobs> {
         let merged_rollup = self.merged_rollup;
         let constants = merged_rollup.constants;
 
-        let content_commitment = ContentCommitment {
-            blobs_hash: self.blobs_hash,
-            in_hash: merged_rollup.in_hash,
-            out_hash: merged_rollup.out_hash,
-        };
-
         CheckpointHeader {
             last_archive_root: merged_rollup.previous_archive.root,
-            content_commitment,
+            blobs_hash: self.blobs_hash,
+            in_hash: merged_rollup.in_hash,
             slot_number: constants.slot_number,
             timestamp: merged_rollup.end_timestamp,
             coinbase: constants.coinbase,

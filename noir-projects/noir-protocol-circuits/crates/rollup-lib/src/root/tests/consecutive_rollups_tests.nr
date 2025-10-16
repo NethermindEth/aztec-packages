@@ -10,6 +10,19 @@ fn correct_default_inputs() {
     builder.assert_expected_public_inputs(pi);
 }
 
+#[test]
+fn propagate_right_out_hash_when_left_is_zero() {
+    let mut builder = TestBuilder::default();
+
+    builder.left_rollup.out_hash = 0;
+    builder.right_rollup.out_hash = 123;
+
+    let pi = builder.execute();
+    builder.assert_expected_public_inputs(pi);
+
+    assert_eq(pi.out_hash, 123);
+}
+
 #[test(should_fail_with = "Mismatched constants in checkpoint rollups")]
 fn mismatch_constants() {
     let mut builder = TestBuilder::default();

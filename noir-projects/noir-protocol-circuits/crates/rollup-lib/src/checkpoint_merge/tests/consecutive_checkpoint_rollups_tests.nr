@@ -1,4 +1,57 @@
 use super::TestBuilder;
+use types::hash::accumulate_sha256;
+
+#[test]
+fn accumulated_out_hash_correctly() {
+    let mut builder = TestBuilder::default();
+
+    builder.left_rollup.out_hash = 456;
+    builder.right_rollup.out_hash = 123;
+
+    let pi = builder.execute();
+    builder.assert_expected_public_inputs(pi);
+
+    assert_eq(pi.out_hash, accumulate_sha256(456, 123));
+}
+
+#[test]
+fn propagate_left_out_hash_when_right_is_zero() {
+    let mut builder = TestBuilder::default();
+
+    builder.left_rollup.out_hash = 456;
+    builder.right_rollup.out_hash = 0;
+
+    let pi = builder.execute();
+    builder.assert_expected_public_inputs(pi);
+
+    assert_eq(pi.out_hash, 456);
+}
+
+#[test]
+fn propagate_right_out_hash_when_left_is_zero() {
+    let mut builder = TestBuilder::default();
+
+    builder.left_rollup.out_hash = 0;
+    builder.right_rollup.out_hash = 123;
+
+    let pi = builder.execute();
+    builder.assert_expected_public_inputs(pi);
+
+    assert_eq(pi.out_hash, 123);
+}
+
+#[test]
+fn output_zero_when_both_out_hashes_are_zero() {
+    let mut builder = TestBuilder::default();
+
+    builder.left_rollup.out_hash = 0;
+    builder.right_rollup.out_hash = 0;
+
+    let pi = builder.execute();
+    builder.assert_expected_public_inputs(pi);
+
+    assert_eq(pi.out_hash, 0);
+}
 
 #[test]
 fn correct_default_inputs() {

@@ -33,7 +33,7 @@ import { CheckpointHeader } from '@aztec/stdlib/rollup';
 import { pickFromSchema } from '@aztec/stdlib/schemas';
 import type { L2BlockBuiltStats } from '@aztec/stdlib/stats';
 import { MerkleTreeId } from '@aztec/stdlib/trees';
-import { ContentCommitment, type FailedTx, GlobalVariables, Tx } from '@aztec/stdlib/tx';
+import { type FailedTx, GlobalVariables, Tx } from '@aztec/stdlib/tx';
 import { AttestationTimeoutError } from '@aztec/stdlib/validators';
 import { Attributes, type TelemetryClient, type Tracer, getTelemetryClient, trackSpan } from '@aztec/telemetry-client';
 import type { ValidatorClient } from '@aztec/validator-client';
@@ -442,7 +442,8 @@ export class Sequencer extends (EventEmitter as new () => TypedEventEmitter<Sequ
       ...newGlobalVariables,
       timestamp: newGlobalVariables.timestamp,
       lastArchiveRoot: chainTipArchive,
-      contentCommitment: ContentCommitment.empty(),
+      blobsHash: Fr.ZERO,
+      inHash: Fr.ZERO,
       totalManaUsed: Fr.ZERO,
     });
 

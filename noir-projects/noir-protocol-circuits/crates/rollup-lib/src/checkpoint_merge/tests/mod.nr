@@ -13,6 +13,7 @@ use types::{
         AZTEC_MAX_EPOCH_DURATION, CHECKPOINT_MERGE_ROLLUP_VK_INDEX, CHECKPOINT_ROOT_ROLLUP_VK_INDEX,
         CHECKPOINT_ROOT_SINGLE_BLOCK_ROLLUP_VK_INDEX,
     },
+    hash::accumulate_sha256,
     traits::Empty,
 };
 
@@ -119,6 +120,16 @@ impl TestBuilder {
         }
         assert_eq(pi.checkpoint_header_hashes, expected_header_hashes);
         assert_eq(pi.fees, expected_fees);
+
+        let expected_out_hash = if (left.out_hash != 0) & (right.out_hash != 0) {
+            accumulate_sha256(left.out_hash, right.out_hash)
+        } else if left.out_hash != 0 {
+            left.out_hash
+        } else {
+            right.out_hash
+        };
+        assert_eq(pi.out_hash, expected_out_hash);
+        // The tests to cover all the above scenarios are in `consecutive_checkpoint_rollups_tests.nr`.
 
         assert_eq(pi.start_blob_accumulator, left.start_blob_accumulator);
         assert_eq(pi.end_blob_accumulator, right.end_blob_accumulator);
