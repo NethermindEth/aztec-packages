@@ -368,7 +368,7 @@ EOF
     run_nargo check "$@"
     ;;
   lsp)
-    # TODO(benesjan): Drop this?
+    # TODO(benesjan): Drop this? - if not document in cli.ts
     # Special-case nargo's LSP command:
     # 1. include --rm for cleanup
     # 2. don't specify a user (run as root)
