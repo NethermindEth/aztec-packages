@@ -54,6 +54,67 @@ function get_env_vars {
 }
 
 case ${1:-} in
+  compile)
+    # If help is requested we just run `nargo compile --help` (or `nargo compile -h` which is help summary) and exit.
+    for arg in "$@"; do
+      if [ "$arg" == "--help" ] || [ "$arg" == "-h" ]; then
+        # Run nargo compile
+        docker run ${TTY_FLAGS:-} \
+          --user $(id -u):$(id -g) \
+          -v $HOME:$HOME \
+          -e HOME=$HOME \
+          --workdir="$PWD" \
+          --entrypoint=/usr/src/noir/noir-repo/target/release/nargo \
+          $DOCKER_REPO:$VERSION compile $arg
+        exit 0
+      fi
+    done
+
+    # Validate working directory is under $HOME
+    if [[ $PWD != ${HOME}* ]]; then
+      >&2 echo "Due to how we containerize our applications, we require your working directory to be somewhere within $HOME."
+      exit 1
+    fi
+
+    shift
+
+    # Determine if we need interactive/tty flags
+    if [ -t 0 ]; then
+      if [ -t 1 ]; then
+        TTY_FLAGS="-ti"
+      else
+        TTY_FLAGS="-i"
+      fi
+    fi
+
+    # Run nargo compile
+    docker run ${TTY_FLAGS:-} \
+      --user $(id -u):$(id -g) \
+      -v $HOME:$HOME \
+      -e HOME=$HOME \
+      --workdir="$PWD" \
+      --entrypoint=/usr/src/noir/noir-repo/target/release/nargo \
+      $DOCKER_REPO:$VERSION compile "$@"
+
+    # Check if nargo compile succeeded
+    if [ $? -ne 0 ]; then
+      >&2 echo "Compilation failed!"
+      exit 1
+    fi
+
+    echo "Postprocessing contract..."
+
+    # Run postprocessing script
+    docker run ${TTY_FLAGS:-} \
+      --user $(id -u):$(id -g) \
+      -v $HOME:$HOME \
+      -e HOME=$HOME \
+      --workdir="$PWD" \
+      --entrypoint=/usr/src/aztec-postprocess-contract/transpile_contract_and_gen_vks.sh \
+      $DOCKER_REPO:$VERSION
+
+    echo "Compilation complete!"
+    ;;
   test)
     shift
     # Should this just be aztec-test? It's like, a new command that doesn't exist on aztec cli.
@@ -208,7 +269,7 @@ case ${1:-} in
       $DOCKER_REPO:$VERSION /tmp/$(basename $2) $3
     ;;
   init)
-    # Validate working directory is under $HOME (same requirement as aztec-nargo)
+    # Validate working directory is under $HOME
     if [[ $PWD != ${HOME}* ]]; then
       >&2 echo "Due to how we containerize our applications, we require your working directory to be somewhere within $HOME."
       exit 1
