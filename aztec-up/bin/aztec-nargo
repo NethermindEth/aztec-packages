@@ -20,10 +20,16 @@ if [ "${1:-}" == "lsp" ]; then
   exit
 fi
 
-# Deprecate init command
+# Deprecate init and test commands
 if [ "${1:-}" == "init" ]; then
   >&2 echo "The 'aztec-nargo init' command has been deprecated."
   >&2 echo "Please use 'aztec init' instead."
+  exit 1
+fi
+
+if [ "${1:-}" == "test" ]; then
+  >&2 echo "The 'aztec-nargo test' command has been deprecated."
+  >&2 echo "Please use 'aztec test' instead."
   exit 1
 fi
 
