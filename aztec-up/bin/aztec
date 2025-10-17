@@ -367,6 +367,21 @@ EOF
     # Run nargo check
     run_nargo check "$@"
     ;;
+  lsp)
+    # TODO(benesjan): Drop this?
+    # Special-case nargo's LSP command:
+    # 1. include --rm for cleanup
+    # 2. don't specify a user (run as root)
+    # 3. don't specify a workdir
+    validate_working_directory
+
+    docker run --rm -i \
+      --name aztec-nargo-lsp \
+      -v $HOME:$HOME \
+      -e HOME=$HOME \
+      --entrypoint=/usr/src/noir/noir-repo/target/release/nargo \
+      $DOCKER_REPO:$VERSION lsp
+    ;;
   *)
     export ENV_VARS_TO_INJECT="SECRET_KEY"
     exec $(dirname $0)/.aztec-run aztec \
