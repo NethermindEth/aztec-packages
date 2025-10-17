@@ -75,6 +75,7 @@ AZTEC-SPECIFIC NOTES:
   - Use standard nargo compile options (see below)
 
 ENVIRONMENT VARIABLES:
+  AZTEC_PATH    Path to Aztec installation (default: $HOME/.aztec)
   VERSION       Aztec version to use (default: from $AZTEC_PATH/default_version)
   DOCKER_REPO   Docker repository (default: aztecprotocol/aztec)
 
