@@ -388,6 +388,33 @@ EOF
       --entrypoint=/usr/src/noir/noir-repo/target/release/nargo \
       $DOCKER_REPO:$VERSION fmt "$@"
     ;;
+  check)
+    # Validate working directory is under $HOME
+    if [[ $PWD != ${HOME}* ]]; then
+      >&2 echo "Due to how we containerize our applications, we require your working directory to be somewhere within $HOME."
+      exit 1
+    fi
+
+    shift
+
+    # Determine if we need interactive/tty flags
+    if [ -t 0 ]; then
+      if [ -t 1 ]; then
+        TTY_FLAGS="-ti"
+      else
+        TTY_FLAGS="-i"
+      fi
+    fi
+
+    # Run nargo check
+    docker run ${TTY_FLAGS:-} \
+      --user $(id -u):$(id -g) \
+      -v $HOME:$HOME \
+      -e HOME=$HOME \
+      --workdir="$PWD" \
+      --entrypoint=/usr/src/noir/noir-repo/target/release/nargo \
+      $DOCKER_REPO:$VERSION check "$@"
+    ;;
   *)
     export ENV_VARS_TO_INJECT="SECRET_KEY"
     exec $(dirname $0)/.aztec-run aztec \
