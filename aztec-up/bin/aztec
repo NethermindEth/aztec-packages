@@ -53,15 +53,17 @@ function get_env_vars {
     awk -F"'" '{for(i=2;i<=NF;i+=2) printf $i " "}'
 }
 
-function run_nargo {
-  # Helper function to run nargo commands with proper Docker setup
-  # Usage: run_nargo <command> [args...]
-
-  # Validate working directory is under $HOME
+function validate_working_directory {
+  # Validate working directory is under $HOME for Docker containerization
   if [[ $PWD != ${HOME}* ]]; then
     >&2 echo "Due to how we containerize our applications, we require your working directory to be somewhere within $HOME."
     exit 1
   fi
+}
+
+function run_nargo {
+  # Helper function to run nargo commands with proper Docker setup
+  # Usage: run_nargo <command> [args...]
 
   # Determine if we need interactive/tty flags
   if [ -t 0 ]; then
@@ -119,6 +121,9 @@ EOF
     done
 
     shift
+
+    # We didn't need to perform this check for help because there we don't need to access any files.
+    validate_working_directory
 
     # Run nargo compile
     run_nargo compile "$@"
@@ -298,6 +303,8 @@ EOF
   init)
     shift
 
+    validate_working_directory
+
     # Build nargo init command arguments
     NARGO_ARGS=("init")
 
@@ -339,17 +346,23 @@ EOF
 
     echo "Initializing Noir project..."
 
+    validate_working_directory
+
     # Run nargo init via docker (matching aztec-nargo's setup)
     run_nargo "${NARGO_ARGS[@]}"
     ;;
   fmt)
     shift
 
+    validate_working_directory
+
     # Run nargo fmt
     run_nargo fmt "$@"
     ;;
   check)
     shift
+
+    validate_working_directory
 
     # Run nargo check
     run_nargo check "$@"
