@@ -37,6 +37,17 @@ export function injectAztecCommands(program: Command, userLog: LogFn, debugLogge
 
   Additional commands:
 
+    init [folder] [options]: creates a new Noir project
+      Options:
+        --name <name>       Name of the package
+        --lib               Use a library template
+        --bin               Use a binary template
+        --contract          Use a contract template (default)
+      Examples:
+        $ aztec init                    # creates a contract project in current directory
+        $ aztec init my-project         # creates a contract project in ./my-project
+        $ aztec init --lib              # creates a library project
+
     test [options]: starts a dockerized TXE node via
       $ aztec start --txe
     then runs
