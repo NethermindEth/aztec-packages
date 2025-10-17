@@ -55,6 +55,15 @@ function get_env_vars {
 
 case ${1:-} in
   compile)
+    # Determine if we need interactive/tty flags
+    if [ -t 0 ]; then
+      if [ -t 1 ]; then
+        TTY_FLAGS="-ti"
+      else
+        TTY_FLAGS="-i"
+      fi
+    fi
+
     # If help is requested, show Aztec-specific info then run nargo compile help and then exit in order to not trigger
     # transpilation
     for arg in "$@"; do
@@ -102,15 +111,6 @@ EOF
     fi
 
     shift
-
-    # Determine if we need interactive/tty flags
-    if [ -t 0 ]; then
-      if [ -t 1 ]; then
-        TTY_FLAGS="-ti"
-      else
-        TTY_FLAGS="-i"
-      fi
-    fi
 
     # Run nargo compile
     docker run ${TTY_FLAGS:-} \
@@ -360,6 +360,33 @@ EOF
       --workdir="$PWD" \
       --entrypoint=/usr/src/noir/noir-repo/target/release/nargo \
       $DOCKER_REPO:$VERSION "${NARGO_ARGS[@]}"
+    ;;
+  fmt)
+    # Validate working directory is under $HOME
+    if [[ $PWD != ${HOME}* ]]; then
+      >&2 echo "Due to how we containerize our applications, we require your working directory to be somewhere within $HOME."
+      exit 1
+    fi
+
+    shift
+
+    # Determine if we need interactive/tty flags
+    if [ -t 0 ]; then
+      if [ -t 1 ]; then
+        TTY_FLAGS="-ti"
+      else
+        TTY_FLAGS="-i"
+      fi
+    fi
+
+    # Run nargo fmt
+    docker run ${TTY_FLAGS:-} \
+      --user $(id -u):$(id -g) \
+      -v $HOME:$HOME \
+      -e HOME=$HOME \
+      --workdir="$PWD" \
+      --entrypoint=/usr/src/noir/noir-repo/target/release/nargo \
+      $DOCKER_REPO:$VERSION fmt "$@"
     ;;
   *)
     export ENV_VARS_TO_INJECT="SECRET_KEY"
