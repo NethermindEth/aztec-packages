@@ -207,7 +207,7 @@ case ${1:-} in
       -v $(realpath $(dirname $2))/:/tmp \
       $DOCKER_REPO:$VERSION /tmp/$(basename $2) $3
     ;;
-boo  init)
+  init)
     # Validate working directory is under $HOME (same requirement as aztec-nargo)
     if [[ $PWD != ${HOME}* ]]; then
       >&2 echo "Due to how we containerize our applications, we require your working directory to be somewhere within $HOME."
