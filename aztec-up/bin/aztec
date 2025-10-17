@@ -55,10 +55,34 @@ function get_env_vars {
 
 case ${1:-} in
   compile)
-    # If help is requested we just run `nargo compile --help` (or `nargo compile -h` which is help summary) and exit.
+    # If help is requested, show Aztec-specific info then run nargo compile help and then exit in order to not trigger
+    # transpilation
     for arg in "$@"; do
       if [ "$arg" == "--help" ] || [ "$arg" == "-h" ]; then
-        # Run nargo compile
+        cat << 'EOF'
+Aztec Compile - Compile Aztec Noir contracts
+
+This command compiles Aztec Noir contracts using nargo and then automatically
+postprocesses them to generate Aztec-specific artifacts including:
+  - Transpiled contract artifacts
+  - Verification keys
+
+The compiled contracts will be placed in the target/ directory by default.
+
+AZTEC-SPECIFIC NOTES:
+  - Working directory must be under $HOME due to Docker containerization
+  - Compilation automatically includes contract postprocessing
+  - Use standard nargo compile options (see below)
+
+ENVIRONMENT VARIABLES:
+  VERSION       Aztec version to use (default: from $AZTEC_PATH/default_version)
+  DOCKER_REPO   Docker repository (default: aztecprotocol/aztec)
+
+---
+Underlying nargo compile options:
+
+EOF
+        # Run nargo compile help
         docker run ${TTY_FLAGS:-} \
           --user $(id -u):$(id -g) \
           -v $HOME:$HOME \
