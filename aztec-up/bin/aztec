@@ -207,6 +207,74 @@ case ${1:-} in
       -v $(realpath $(dirname $2))/:/tmp \
       $DOCKER_REPO:$VERSION /tmp/$(basename $2) $3
     ;;
+boo  init)
+    # Validate working directory is under $HOME (same requirement as aztec-nargo)
+    if [[ $PWD != ${HOME}* ]]; then
+      >&2 echo "Due to how we containerize our applications, we require your working directory to be somewhere within $HOME."
+      exit 1
+    fi
+
+    shift
+
+    # Build nargo init command arguments
+    NARGO_ARGS=("init")
+
+    # Parse arguments
+    HAS_TYPE_FLAG=false
+    while [ "$#" -gt 0 ]; do
+      case $1 in
+        --name)
+          NARGO_ARGS+=("--name" "$2")
+          shift 2
+          ;;
+        --lib)
+          NARGO_ARGS+=("--lib")
+          HAS_TYPE_FLAG=true
+          shift
+          ;;
+        --bin)
+          NARGO_ARGS+=("--bin")
+          HAS_TYPE_FLAG=true
+          shift
+          ;;
+        --contract)
+          NARGO_ARGS+=("--contract")
+          HAS_TYPE_FLAG=true
+          shift
+          ;;
+        *)
+          # Assume it's the folder argument
+          NARGO_ARGS+=("$1")
+          shift
+          ;;
+      esac
+    done
+
+    # Default to --contract if no type flag was provided
+    if [ "$HAS_TYPE_FLAG" = false ]; then
+      NARGO_ARGS+=("--contract")
+    fi
+
+    # Determine if we need interactive/tty flags
+    if [ -t 0 ]; then
+      if [ -t 1 ]; then
+        TTY_FLAGS="-ti"
+      else
+        TTY_FLAGS="-i"
+      fi
+    fi
+
+    echo "Initializing Noir project..."
+
+    # Run nargo init via docker (matching aztec-nargo's setup)
+    docker run ${TTY_FLAGS:-} \
+      --user $(id -u):$(id -g) \
+      -v $HOME:$HOME \
+      -e HOME=$HOME \
+      --workdir="$PWD" \
+      --entrypoint=/usr/src/noir/noir-repo/target/release/nargo \
+      $DOCKER_REPO:$VERSION "${NARGO_ARGS[@]}"
+    ;;
   *)
     export ENV_VARS_TO_INJECT="SECRET_KEY"
     exec $(dirname $0)/.aztec-run aztec \
