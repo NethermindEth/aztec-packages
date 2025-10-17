@@ -86,6 +86,8 @@ function run_nargo {
 
 case ${1:-} in
   compile)
+    shift
+
     # If help is requested, show Aztec-specific info then run nargo compile help and then exit in order to not trigger
     # transpilation
     for arg in "$@"; do
@@ -119,8 +121,6 @@ EOF
         exit 0
       fi
     done
-
-    shift
 
     # We didn't need to perform this check for help because there we don't need to access any files.
     validate_working_directory
