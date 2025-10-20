@@ -19,6 +19,7 @@ import type { ReqRespInterface } from '../interface.js';
 import { BitVector, BlockTxsRequest, BlockTxsResponse } from '../protocols/index.js';
 import { ReqRespStatus } from '../status.js';
 import { BatchTxRequester } from './batch_tx_requester.js';
+import type { BatchTxRequesterLibP2PService } from './interface.js';
 import { TX_BATCH_SIZE } from './missing_txs.js';
 import {
   BAD_PEER_THRESHOLD,
@@ -35,12 +36,14 @@ describe('BatchTxRequester', () => {
   let logger: Logger;
   let blockProposal: BlockProposal;
   let connectionSampler: MockProxy<ConnectionSampler>;
-  let reqresp: MockProxy<ReqRespInterface>;
+  let reqResp: MockProxy<ReqRespInterface>;
+  let mockP2PService: MockProxy<BatchTxRequesterLibP2PService>;
 
   beforeEach(() => {
     logger = createLogger('test');
     connectionSampler = mock<ConnectionSampler>();
-    reqresp = mock<ReqRespInterface>();
+    reqResp = mock<ReqRespInterface>();
+    mockP2PService = mock<BatchTxRequesterLibP2PService>({ connectionSampler, reqResp, txValidator });
 
     const signer = Secp256k1Signer.random();
     const blockHash = Fr.random();
@@ -70,7 +73,7 @@ describe('BatchTxRequester', () => {
       connectionSampler.getPeerListSortedByConnectionCountAsc.mockReturnValue([peerId]);
 
       const { requestLog, requestCount, mockImplementation } = createRequestLogger(blockProposal);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const clock = new TestClock();
 
@@ -79,9 +82,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         undefined,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         clock,
         {
@@ -126,7 +127,7 @@ describe('BatchTxRequester', () => {
       connectionSampler.getPeerListSortedByConnectionCountAsc.mockReturnValue(peers);
 
       const { requestLog, requestCount, mockImplementation } = createRequestLogger(blockProposal);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const clock = new TestClock();
 
@@ -135,9 +136,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         undefined,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         clock,
         {
@@ -209,7 +208,7 @@ describe('BatchTxRequester', () => {
 
       const peerRequestCounts = new Map<string, number>();
 
-      reqresp.sendRequestToPeer.mockImplementation(async (peerId, _sub, data) => {
+      reqResp.sendRequestToPeer.mockImplementation(async (peerId, _sub, data) => {
         const request = BlockTxsRequest.fromBuffer(data);
         const requestedIndices = request.txIndices.getTrueIndices();
 
@@ -251,9 +250,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         undefined,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {
@@ -288,7 +285,7 @@ describe('BatchTxRequester', () => {
       connectionSampler.getPeerListSortedByConnectionCountAsc.mockReturnValue(peers);
 
       const { mockImplementation } = createRequestLogger(blockProposal, new Set(peers.map(p => p.toString())));
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const semaphore = new TestSemaphore(new Semaphore(0));
 
@@ -297,9 +294,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         undefined,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {
@@ -342,7 +337,7 @@ describe('BatchTxRequester', () => {
       ]);
 
       const { mockImplementation } = createRequestLogger(blockProposal, new Set(), peerTransactions);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const semaphore = new TestSemaphore(new Semaphore(0));
       const requester = new BatchTxRequester(
@@ -350,9 +345,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         dateProvider,
         {
@@ -414,7 +407,7 @@ describe('BatchTxRequester', () => {
       ]);
 
       const { mockImplementation } = createRequestLogger(blockProposal, new Set(), peerTransactions);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const semaphore = new TestSemaphore(new Semaphore(0));
       const requester = new BatchTxRequester(
@@ -422,9 +415,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         dateProvider,
         {
@@ -471,7 +462,7 @@ describe('BatchTxRequester', () => {
       ]);
 
       const { mockImplementation } = createRequestLogger(blockProposal, new Set(), peerTransactions);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const semaphore = new TestSemaphore(new Semaphore(0));
       const requester = new BatchTxRequester(
@@ -479,9 +470,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         dateProvider,
         {
@@ -530,15 +519,13 @@ describe('BatchTxRequester', () => {
         new Set([peers[0].toString()]),
         peerTransactions,
       );
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
       const requester = new BatchTxRequester(
         missing,
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         dateProvider,
         {
@@ -581,7 +568,7 @@ describe('BatchTxRequester', () => {
 
       // Mock implementation: first 4 requests fail (exceed threshold), then succeed
       // eslint-disable-next-line require-await
-      reqresp.sendRequestToPeer.mockImplementation(async peerId => {
+      reqResp.sendRequestToPeer.mockImplementation(async peerId => {
         if (peerId.toString() === peers[0].toString()) {
           requestCount++;
 
@@ -611,9 +598,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         dateProvider,
         {
@@ -663,7 +648,7 @@ describe('BatchTxRequester', () => {
       const peerRequestCounts = new Map<string, number>();
 
       // eslint-disable-next-line require-await
-      reqresp.sendRequestToPeer.mockImplementation(async (peerId: any, _sub: any, data: any) => {
+      reqResp.sendRequestToPeer.mockImplementation(async (peerId: any, _sub: any, data: any) => {
         const peerStr = peerId.toString();
         const currentCount = peerRequestCounts.get(peerStr) || 0;
         peerRequestCounts.set(peerStr, currentCount + 1);
@@ -726,9 +711,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         dateProvider,
         {
@@ -830,7 +813,7 @@ describe('BatchTxRequester', () => {
 
       let requestCount = 0;
       // eslint-disable-next-line require-await
-      reqresp.sendRequestToPeer.mockImplementation(async (peerId: any) => {
+      reqResp.sendRequestToPeer.mockImplementation(async (peerId: any) => {
         const peerStr = peerId.toString();
         // First 2 request to peer0 will be rate limited
         if (peerStr === peers[0].toString() && requestCount < 1) {
@@ -863,9 +846,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         clock,
         {
@@ -921,7 +902,7 @@ describe('BatchTxRequester', () => {
         new Map(),
         shortDeadline / 4,
       );
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const clock = new TestClock();
 
@@ -930,9 +911,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         undefined,
         shortDeadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         clock,
         {
@@ -975,7 +954,7 @@ describe('BatchTxRequester', () => {
 
       let requestsMade = 0;
       // eslint-disable-next-line require-await
-      reqresp.sendRequestToPeer.mockImplementation(async () => {
+      reqResp.sendRequestToPeer.mockImplementation(async () => {
         requestsMade++;
         // This should never be called since we abort immediately
         return {
@@ -989,9 +968,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         undefined,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {
@@ -1030,7 +1007,7 @@ describe('BatchTxRequester', () => {
       const abortController = new AbortController();
       let requestCount = 0;
 
-      reqresp.sendRequestToPeer.mockImplementation(async (peerId: any) => {
+      reqResp.sendRequestToPeer.mockImplementation(async (peerId: any) => {
         if (requestCount === 1) {
           abortController.abort();
         }
@@ -1062,9 +1039,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         undefined,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {
@@ -1105,7 +1080,7 @@ describe('BatchTxRequester', () => {
 
       const peerTransactions = new Map([[peers[0].toString(), Array.from({ length: txCount / 2 }, (_, i) => i)]]);
       const { mockImplementation } = createRequestLogger(blockProposal, new Set(), peerTransactions, 100);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const abortController = new AbortController();
 
@@ -1116,9 +1091,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         undefined,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         clock,
         {
@@ -1181,18 +1154,17 @@ describe('BatchTxRequester', () => {
 
         return !invalidTxIndices.has(txIndex);
       });
+      mockP2PService.txValidator.mockImplementation(customTxValidator);
 
       const { mockImplementation } = createRequestLogger(blockProposal, new Set(), peerTransactions);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const requester = new BatchTxRequester(
         missing,
         blockProposal,
         undefined,
         deadline,
-        reqresp,
-        connectionSampler,
-        customTxValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {
@@ -1268,18 +1240,17 @@ describe('BatchTxRequester', () => {
         // Peer 2: accepts all
         return true;
       });
+      mockP2PService.txValidator.mockImplementation(peerSpecificValidator);
 
       const { mockImplementation } = createRequestLogger(blockProposal, new Set(), peerTransactions);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const requester = new BatchTxRequester(
         missing,
         blockProposal,
         undefined,
         deadline,
-        reqresp,
-        connectionSampler,
-        peerSpecificValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {
@@ -1331,20 +1302,19 @@ describe('BatchTxRequester', () => {
 
         return true;
       });
+      mockP2PService.txValidator.mockImplementation(throwingValidator);
 
       const peerTransactions = new Map([[peer.toString(), Array.from({ length: txCount }, (_, i) => i)]]);
 
       const { mockImplementation } = createRequestLogger(blockProposal, new Set(), peerTransactions);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const requester = new BatchTxRequester(
         missing,
         blockProposal,
         undefined,
         deadline,
-        reqresp,
-        connectionSampler,
-        throwingValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {
@@ -1397,16 +1367,14 @@ describe('BatchTxRequester', () => {
       ]);
 
       const { requestLog, mockImplementation } = createRequestLogger(blockProposal, new Set(), peerTransactions);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const requester = new BatchTxRequester(
         missing,
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {
@@ -1448,16 +1416,14 @@ describe('BatchTxRequester', () => {
       ]);
 
       const { mockImplementation } = createRequestLogger(blockProposal, new Set(), peerTransactions, 50);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const requester = new BatchTxRequester(
         missing,
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {
@@ -1500,7 +1466,7 @@ describe('BatchTxRequester', () => {
 
       let pinnedPeerRequestCount = 0;
       // eslint-disable-next-line require-await
-      reqresp.sendRequestToPeer.mockImplementation(async (peerId: any, _sub: any, data: any) => {
+      reqResp.sendRequestToPeer.mockImplementation(async (peerId: any, _sub: any, data: any) => {
         const peerStr = peerId.toString();
 
         // First request to pinned peer returns rate limit
@@ -1537,9 +1503,7 @@ describe('BatchTxRequester', () => {
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         clock,
         {
@@ -1585,16 +1549,14 @@ describe('BatchTxRequester', () => {
 
       const peersToReturnFailureFor = new Set([pinnedPeer.toString()]);
       const { mockImplementation } = createRequestLogger(blockProposal, peersToReturnFailureFor, peerTransactions);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const requester = new BatchTxRequester(
         missing,
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        txValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {
@@ -1639,18 +1601,17 @@ describe('BatchTxRequester', () => {
         const txIndex = missing.findIndex(h => h.equals(tx.txHash));
         return !invalidTxIndices.has(txIndex);
       });
+      mockP2PService.txValidator.mockImplementation(customTxValidator);
 
       const { mockImplementation } = createRequestLogger(blockProposal, new Set(), peerTransactions);
-      reqresp.sendRequestToPeer.mockImplementation(mockImplementation);
+      reqResp.sendRequestToPeer.mockImplementation(mockImplementation);
 
       const requester = new BatchTxRequester(
         missing,
         blockProposal,
         pinnedPeer,
         deadline,
-        reqresp,
-        connectionSampler,
-        customTxValidator,
+        mockP2PService,
         logger,
         new DateProvider(),
         {

@@ -18,6 +18,7 @@ import { type P2PConfig, getP2PDefaultConfig } from '../../config.js';
 import type { AttestationPool } from '../../mem_pools/attestation_pool/attestation_pool.js';
 import type { TxPool } from '../../mem_pools/tx_pool/index.js';
 import { BatchTxRequester } from '../../services/reqresp/batch-tx-requester/batch_tx_requester.js';
+import type { BatchTxRequesterLibP2PService } from '../../services/reqresp/batch-tx-requester/interface.js';
 import type { ConnectionSampler } from '../../services/reqresp/connection-sampler/connection_sampler.js';
 import { generatePeerIdPrivateKeys } from '../../test-helpers/generate-peer-id-private-keys.js';
 import { getPorts } from '../../test-helpers/get-ports.js';
@@ -33,6 +34,7 @@ describe('p2p client integration batch txs', () => {
   let epochCache: MockProxy<EpochCache>;
   let worldState: MockProxy<WorldStateSynchronizer>;
 
+  let mockP2PService: MockProxy<BatchTxRequesterLibP2PService>;
   let connectionSampler: MockProxy<ConnectionSampler>;
 
   let logger: Logger;
@@ -47,6 +49,7 @@ describe('p2p client integration batch txs', () => {
     epochCache = mock<EpochCache>();
     worldState = mock<WorldStateSynchronizer>();
     connectionSampler = mock<ConnectionSampler>();
+    mockP2PService = mock<BatchTxRequesterLibP2PService>({ connectionSampler });
 
     logger = createLogger('p2p:test:integration:batch');
     p2pBaseConfig = { ...emptyChainConfig, ...getP2PDefaultConfig() };
@@ -206,14 +209,14 @@ describe('p2p client integration batch txs', () => {
 
     // Create BatchTxRequester instance
     const [client0] = clients;
+    mockP2PService.reqResp = (client0 as any).p2pService.reqresp;
+
     const requester = new BatchTxRequester(
       missingTxHashes,
       blockProposal,
       undefined, // no pinned peer
       5_000,
-      (client0 as any).p2pService.reqresp,
-      connectionSampler,
-      () => Promise.resolve(true),
+      mockP2PService,
       logger,
     );
 
