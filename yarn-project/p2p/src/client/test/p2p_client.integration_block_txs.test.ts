@@ -8,7 +8,7 @@ import { emptyChainConfig } from '@aztec/stdlib/config';
 import type { WorldStateSynchronizer } from '@aztec/stdlib/interfaces/server';
 import { BlockProposal } from '@aztec/stdlib/p2p';
 import { makeBlockProposal, makeL2BlockHeader } from '@aztec/stdlib/testing';
-import { Tx, TxHash } from '@aztec/stdlib/tx';
+import { Tx, TxHash, TxHashArray } from '@aztec/stdlib/tx';
 
 import { describe, expect, it, jest } from '@jest/globals';
 import { type MockProxy, mock } from 'jest-mock-extended';
