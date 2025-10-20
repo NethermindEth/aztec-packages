@@ -50,6 +50,7 @@ describe('p2p client integration batch txs', () => {
     worldState = mock<WorldStateSynchronizer>();
     connectionSampler = mock<ConnectionSampler>();
     mockP2PService = mock<BatchTxRequesterLibP2PService>({ connectionSampler });
+    mockP2PService.txValidator.mockResolvedValue(true);
 
     logger = createLogger('p2p:test:integration:batch');
     p2pBaseConfig = { ...emptyChainConfig, ...getP2PDefaultConfig() };

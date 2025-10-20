@@ -43,7 +43,11 @@ describe('BatchTxRequester', () => {
     logger = createLogger('test');
     connectionSampler = mock<ConnectionSampler>();
     reqResp = mock<ReqRespInterface>();
-    mockP2PService = mock<BatchTxRequesterLibP2PService>({ connectionSampler, reqResp, txValidator });
+    mockP2PService = mock<BatchTxRequesterLibP2PService>({
+      connectionSampler,
+      reqResp,
+    });
+    mockP2PService.txValidator.mockImplementation(txValidator);
 
     const signer = Secp256k1Signer.random();
     const blockHash = Fr.random();
