@@ -4,7 +4,7 @@ import type { Gossipable, PeerErrorSeverity } from '@aztec/stdlib/p2p';
 import { Tx, TxHash } from '@aztec/stdlib/tx';
 
 import type { ENR } from '@chainsafe/enr';
-import type { Libp2p, PeerId } from '@libp2p/interface';
+import type { PeerId } from '@libp2p/interface';
 import EventEmitter from 'events';
 
 import type { PeerManagerInterface } from './peer-manager/interface.js';

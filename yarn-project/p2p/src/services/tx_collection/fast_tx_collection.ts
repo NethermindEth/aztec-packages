@@ -13,7 +13,7 @@ import type { PeerId } from '@libp2p/interface';
 
 import { BatchTxRequester } from '../reqresp/batch-tx-requester/batch_tx_requester.js';
 import type { BatchTxRequesterLibP2PService } from '../reqresp/batch-tx-requester/interface.js';
-import { type ReqRespInterface, ReqRespSubProtocol } from '../reqresp/interface.js';
+import { ReqRespSubProtocol } from '../reqresp/interface.js';
 import { chunkTxHashesRequest } from '../reqresp/protocols/tx.js';
 import type { TxCollectionConfig } from './config.js';
 import type { FastCollectionRequest, FastCollectionRequestInput } from './tx_collection.js';

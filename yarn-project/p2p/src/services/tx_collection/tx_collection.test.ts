@@ -29,8 +29,8 @@ describe('TxCollection', () => {
   let txCollection: TestTxCollection;
 
   let reqResp: MockProxy<Pick<ReqRespInterface, 'sendBatchRequest' | 'sendRequestToPeer'>>;
-  let connectionSampler = mock<ConnectionSampler>();
-  let mockP2PService = mock<BatchTxRequesterLibP2PService>({ connectionSampler });
+  const connectionSampler = mock<ConnectionSampler>();
+  const mockP2PService = mock<BatchTxRequesterLibP2PService>({ connectionSampler });
   let nodes: MockProxy<TxSource>[];
   let txPool: MockProxy<TxPool>;
   let constants: L1RollupConstants;
