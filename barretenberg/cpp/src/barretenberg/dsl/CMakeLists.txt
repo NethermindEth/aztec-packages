@@ -7,8 +7,7 @@ set(DSL_DEPENDENCIES
     stdlib_poseidon2
     stdlib_schnorr
     stdlib_honk_verifier
-    stdlib_client_ivc_verifier
-    vm2_stub)
+    stdlib_client_ivc_verifier)
 
 barretenberg_module(
     dsl
