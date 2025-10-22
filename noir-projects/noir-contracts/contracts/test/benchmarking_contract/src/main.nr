@@ -26,8 +26,8 @@ pub contract Benchmarking {
     #[external("private")]
     fn create_note(owner: AztecAddress, value: Field) {
         let note = ValueNote::new(value, owner);
-        storage.notes.at(owner).insert(note).emit(
-            &mut context,
+        self.storage.notes.at(owner).insert(note).emit(
+            self.context,
             owner,
             MessageDelivery.CONSTRAINED_ONCHAIN,
         );
@@ -39,25 +39,25 @@ pub contract Benchmarking {
     // by @rahul-kothari for a full explanation on why this is needed.
     #[external("private")]
     fn recreate_note(owner: AztecAddress, index: u32) {
-        let owner_notes = storage.notes.at(owner);
+        let owner_notes = self.storage.notes.at(owner);
         let mut getter_options = NoteGetterOptions::new();
         let notes = owner_notes.pop_notes(getter_options.set_limit(1).set_offset(index));
         let note = notes.get(0);
-        owner_notes.insert(note).emit(&mut context, owner, MessageDelivery.CONSTRAINED_ONCHAIN);
+        owner_notes.insert(note).emit(self.context, owner, MessageDelivery.CONSTRAINED_ONCHAIN);
     }
 
     // Reads and writes to public storage and enqueues a call to another public function.
     #[external("public")]
     fn increment_balance(owner: AztecAddress, value: Field) {
-        let current = storage.balances.at(owner).read();
-        storage.balances.at(owner).write(current + value);
-        Benchmarking::at(context.this_address()).broadcast(owner).call(&mut context);
+        let current = self.storage.balances.at(owner).read();
+        self.storage.balances.at(owner).write(current + value);
+        Benchmarking::at(self.address).broadcast(owner).call(self.context);
     }
 
     // Emits a public log.
     #[external("public")]
     fn broadcast(owner: AztecAddress) {
-        context.emit_public_log(storage.balances.at(owner).read());
+        self.context.emit_public_log(self.storage.balances.at(owner).read());
     }
 
     // Does a bunch of heavy compute
