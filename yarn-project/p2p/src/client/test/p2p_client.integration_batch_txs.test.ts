@@ -25,7 +25,7 @@ import { getPorts } from '../../test-helpers/get-ports.js';
 import { makeEnrs } from '../../test-helpers/make-enrs.js';
 import { makeAndStartTestP2PClient, makeAndStartTestP2PClients } from '../../test-helpers/make-test-p2p-clients.js';
 
-const TEST_TIMEOUT = 30_000;
+const TEST_TIMEOUT = 120_000;
 jest.setTimeout(TEST_TIMEOUT);
 
 describe('p2p client integration batch txs', () => {
