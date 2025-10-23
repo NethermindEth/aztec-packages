@@ -5,6 +5,8 @@ tags: [debugging, errors, logging, sandbox, aztec.nr]
 description: This guide shows you how to debug issues in your Aztec contracts.
 ---
 
+<!-- need to move some into aztec.js  -->
+
 This guide shows you how to debug issues in your Aztec development environment.
 
 ## Prerequisites

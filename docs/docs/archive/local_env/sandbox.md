@@ -5,6 +5,8 @@ tags: [sandbox, PXE]
 description: Information about running the Aztec sandbox development environment.
 ---
 
+<!-- NOTE: How is this different from getting started with snadbox - need to merge then delete this one!!! -->
+
 - Current version: `#include_aztec_version`
 - Update with `aztec-up`
 

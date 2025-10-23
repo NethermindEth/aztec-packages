@@ -1,5 +1,5 @@
 ---
-title: CLI Reference
+title: Reference
 description: Comprehensive reference for the Aztec command-line interface (CLI).
 tags: [sandbox]
 sidebar_position: 2

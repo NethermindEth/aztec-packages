@@ -1,5 +1,5 @@
 ---
-title: Connecting to the Sandbox
+title: Getting Started
 tags: [sandbox, connection, pxe]
 sidebar_position: 1
 description: Connect your application to the Aztec sandbox and interact with accounts.
