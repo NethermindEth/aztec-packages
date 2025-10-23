@@ -231,7 +231,7 @@ function build {
     if [ "$(arch)" == "amd64" ] && [ "$CI_FULL" -eq 1 ]; then
       builds+=("build_cross arm64-macos" build_smt_verification)
     fi
-    parallel --line-buffered --tag --halt now,fail=1 "denoise {}" ::: ${builds[@]}
+    parallel --line-buffered --tag --halt now,fail=1 "denoise {}" ::: "${builds[@]}"
   fi
 }
 
