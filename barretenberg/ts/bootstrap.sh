@@ -19,7 +19,7 @@ function build {
     yarn clean
     yarn generate
     yarn build:wasm
-    yarn build:native
+    # yarn build:native
     parallel -v --line-buffered --tag 'denoise "yarn {}"' ::: build:esm build:cjs build:browser
     cache_upload bb.js-$hash.tar.gz dest
   fi
