@@ -168,7 +168,7 @@ jobs:
 
           echo "INFURA Secret Name: $INFURA_SECRET_NAME"
 
-          ./spartan/metrics/testnet-monitor/scripts/update-monitoring.sh $NAMESPACE ${{ env.MONITORING_NAMESPACE }} $NETWORK $INFURA_SECRET_NAME
+          ./spartan/metrics/irm-monitor/scripts/update-monitoring.sh $NAMESPACE ${{ env.MONITORING_NAMESPACE }} $NETWORK $INFURA_SECRET_NAME
 
       - name: Notify Slack on failure
         if: failure()
