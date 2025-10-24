@@ -4,7 +4,7 @@ import { Fr } from '@aztec/foundation/fields';
 import { bufferSchemaFor } from '@aztec/foundation/schemas';
 import { BufferReader, serializeToBuffer } from '@aztec/foundation/serialize';
 
-export class ClientIvcProofWithPI {
+export class ClientIvcProofWithPublicInputs {
   constructor(
     // The proof fields with public inputs.
     // For recursive verification, the public inputs (at the front of the array) must be removed.
@@ -21,7 +21,7 @@ export class ClientIvcProofWithPI {
   }
 
   static empty() {
-    return new ClientIvcProofWithPI([]);
+    return new ClientIvcProofWithPublicInputs([]);
   }
 
   static random(proofSize = CIVC_PROOF_LENGTH) {
@@ -32,22 +32,22 @@ export class ClientIvcProofWithPI {
       { length: proofSize },
       (_, i) => new Fr(randomFields.subarray(i * reducedFrSize, (i + 1) * reducedFrSize)),
     );
-    return new ClientIvcProofWithPI(proof);
+    return new ClientIvcProofWithPublicInputs(proof);
   }
 
   static get schema() {
-    return bufferSchemaFor(ClientIvcProofWithPI);
+    return bufferSchemaFor(ClientIvcProofWithPublicInputs);
   }
 
   toJSON() {
     return this.toBuffer();
   }
 
-  static fromBuffer(buffer: Buffer | BufferReader): ClientIvcProofWithPI {
+  static fromBuffer(buffer: Buffer | BufferReader): ClientIvcProofWithPublicInputs {
     const reader = BufferReader.asReader(buffer);
     const proofLength = reader.readNumber();
     const proof = reader.readArray(proofLength, Fr);
-    return new ClientIvcProofWithPI(proof);
+    return new ClientIvcProofWithPublicInputs(proof);
   }
 
   public toBuffer() {
@@ -55,9 +55,9 @@ export class ClientIvcProofWithPI {
   }
 
   // Called when constructing a ClientIvcProof from proving results.
-  static fromBufferArray(fields: Uint8Array[]): ClientIvcProofWithPI {
+  static fromBufferArray(fields: Uint8Array[]): ClientIvcProofWithPublicInputs {
     const proof = fields.map(field => Fr.fromBuffer(Buffer.from(field)));
-    return new ClientIvcProofWithPI(proof);
+    return new ClientIvcProofWithPublicInputs(proof);
   }
 }
 
@@ -69,7 +69,7 @@ export class ClientIvcProofWithoutPublicInputs {
   ) {}
 
   public attachPublicInputs(publicInputs: Fr[]) {
-    return new ClientIvcProofWithPI([...publicInputs, ...this.proofWithoutPublicInputs]);
+    return new ClientIvcProofWithPublicInputs([...publicInputs, ...this.proofWithoutPublicInputs]);
   }
 
   public isEmpty() {
