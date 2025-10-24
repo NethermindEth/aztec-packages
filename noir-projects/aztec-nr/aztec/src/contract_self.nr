@@ -45,7 +45,13 @@ use protocol_types::{
 pub struct ContractSelf<Context, Storage> {
     /// The address of this contract
     pub address: AztecAddress,
-    /// The contract's storage instance. If the contract has no storage, the type of this will be `()`.
+    /// The contract's storage instance, representing the struct to which the `#[storage]` macro was applied in your
+    /// contract. If the contract has no storage, the type of this will be `()`.
+    ///
+    /// This storage instance is specialized for the current execution context (private, public, or utility) and
+    /// provides access to the contract's state variables. Each state variable accepts the context as a generic
+    /// parameter, which determines its available functionality. For example, a PublicImmutable variable can be read
+    /// from any context (public, private, or utility) but can only be written to from public contexts.
     ///
     /// # Developer Note
     /// If you've arrived here while trying to access your contract's storage while the `Storage` generic type is set to
@@ -53,7 +59,8 @@ pub struct ContractSelf<Context, Storage> {
     /// For guidance on setting this up, please refer to our docs:
     /// https://docs.aztec.network/developers/docs/guides/smart_contracts/storage
     pub storage: Storage,
-    /// The execution context (private, public, or utility)
+    /// The execution context whose type is determined by the #[external(...)] attribute of the contract function based
+    /// on the external function type (private, public, or utility).
     pub context: Context,
 }
 
