@@ -220,7 +220,7 @@ ClientIvcStats::Response ClientIvcStats::execute([[maybe_unused]] BBApiRequest& 
     acir_format::AcirProgram program{ constraint_system };
 
     // Get IVC constraints if any
-    const auto& ivc_constraints = constraint_system.pg_recursion_constraints;
+    const auto& ivc_constraints = constraint_system.hn_recursion_constraints;
 
     // Create metadata with appropriate IVC context
     acir_format::ProgramMetadata metadata{
