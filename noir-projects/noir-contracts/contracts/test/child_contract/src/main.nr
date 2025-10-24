@@ -25,13 +25,6 @@ pub contract Child {
     fn value(input: Field) -> Field {
         input + self.context.chain_id() + self.context.version()
     }
-    // Returns a sum of the input and the chain id and version of the contract in private circuit public input's return_values.
-    // Can only be called from this contract.
-    #[external("private")]
-    #[only_self]
-    fn value_internal(input: Field) -> Field {
-        input + self.context.chain_id() + self.context.version()
-    }
 
     // Returns base_value + chain_id + version + block_number + timestamp
     #[external("public")]
@@ -77,17 +70,6 @@ pub contract Child {
     // Increments `current_value` by `new_value`
     #[external("public")]
     fn pub_inc_value(new_value: Field) -> Field {
-        let old_value = self.storage.current_value.read();
-        self.storage.current_value.write(old_value + new_value);
-        self.context.emit_public_log(new_value);
-
-        new_value
-    }
-
-    // Increments `current_value` by `new_value`. Can only be called from this contract.
-    #[external("public")]
-    #[only_self]
-    fn pub_inc_value_internal(new_value: Field) -> Field {
         let old_value = self.storage.current_value.read();
         self.storage.current_value.write(old_value + new_value);
         self.context.emit_public_log(new_value);
