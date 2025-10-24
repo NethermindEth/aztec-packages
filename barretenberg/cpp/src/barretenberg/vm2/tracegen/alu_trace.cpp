@@ -40,7 +40,8 @@ std::vector<std::pair<Column, FF>> AluTraceBuilder::get_operation_specific_colum
     const MemoryTag a_tag = event.a.get_tag();
     bool is_ff = a_tag == MemoryTag::FF;
     bool is_u128 = a_tag == MemoryTag::U128;
-    bool no_tag_err = event.error != simulation::AluError::TAG_ERROR;
+    bool has_error = event.error;
+    bool is_b_zero = event.b.as_ff() == 0; // Used for DIV and FDIV
 
     // We rely on the following assert in computing C::alu_tag_ff_diff_inv value
     // below. Namely: (tag - MemoryTag::FF).invert() == tag.invert().
@@ -96,8 +97,7 @@ std::vector<std::pair<Column, FF>> AluTraceBuilder::get_operation_specific_colum
         return res;
     }
     case simulation::AluOperation::DIV: {
-        bool div_0_error = event.error == simulation::AluError::DIV_0_ERROR;
-        auto remainder = no_tag_err && !div_0_error ? event.a - event.b * event.c : MemoryValue::from_tag(a_tag, 0);
+        auto remainder = !has_error ? event.a - event.b * event.c : MemoryValue::from_tag(a_tag, 0);
 
         // Columns shared for all tags in a DIV:
         std::vector<std::pair<Column, FF>> res = {
@@ -109,8 +109,8 @@ std::vector<std::pair<Column, FF>> AluTraceBuilder::get_operation_specific_colum
             { Column::alu_tag_ff_diff_inv, tag_inverses[static_cast<uint8_t>(a_tag)] }, // Relies on MemoryTag::FF is 0
             { Column::alu_sel_is_u128, is_u128 },
             { Column::alu_tag_u128_diff_inv, get_tag_diff_inverse(a_tag, MemoryTag::U128) },
-            { Column::alu_b_inv, div_0_error ? 0 : event.b.as_ff() }, // Will be inverted in batch later
-            { Column::alu_sel_div_no_0_err, div_0_error ? 0 : 1 },
+            { Column::alu_b_inv, is_b_zero ? 0 : event.b.as_ff() }, // Will be inverted in batch later
+            { Column::alu_sel_div_no_0_err, is_b_zero ? 0 : 1 },
         };
         if (is_u128) {
             // For u128s, we decompose c and b into 64 bit chunks:
@@ -131,13 +131,12 @@ std::vector<std::pair<Column, FF>> AluTraceBuilder::get_operation_specific_colum
         return res;
     }
     case simulation::AluOperation::FDIV: {
-        bool div_0_error = event.error == simulation::AluError::DIV_0_ERROR;
         return {
             { Column::alu_sel_op_fdiv, 1 },
             { Column::alu_op_id, SUBTRACE_INFO_MAP.at(ExecutionOpCode::FDIV).subtrace_operation_id },
             { Column::alu_sel_is_ff, is_ff },
             { Column::alu_tag_ff_diff_inv, tag_inverses[static_cast<uint8_t>(a_tag)] }, // Relies on MemoryTag::FF is 0
-            { Column::alu_b_inv, div_0_error ? 0 : event.b.as_ff() }, // Will be inverted in batch later
+            { Column::alu_b_inv, is_b_zero ? 0 : event.b.as_ff() }, // Will be inverted in batch later
         };
     }
     case simulation::AluOperation::EQ: {
@@ -154,26 +153,26 @@ std::vector<std::pair<Column, FF>> AluTraceBuilder::get_operation_specific_colum
             { Column::alu_lt_ops_input_b, event.a },
             { Column::alu_lt_ops_result_c, event.c },
             { Column::alu_sel_op_lt, 1 },
-            { Column::alu_sel_lt_ops, no_tag_err },
+            { Column::alu_sel_lt_ops, has_error ? 0 : 1 },
             { Column::alu_op_id,
               static_cast<uint8_t>(SUBTRACE_INFO_MAP.at(ExecutionOpCode::LT).subtrace_operation_id) },
             { Column::alu_sel_is_ff, is_ff },
-            { Column::alu_sel_ff_lt_ops, is_ff && no_tag_err },
-            { Column::alu_sel_int_lt_ops, !is_ff && no_tag_err },
+            { Column::alu_sel_ff_lt_ops, is_ff && !has_error ? 1 : 0 },
+            { Column::alu_sel_int_lt_ops, !is_ff && !has_error ? 1 : 0 },
             { Column::alu_tag_ff_diff_inv, tag_inverses[static_cast<uint8_t>(a_tag)] }, // Relies on MemoryTag::FF is 0
         };
     case simulation::AluOperation::LTE:
         return {
             { Column::alu_lt_ops_input_a, event.a },
             { Column::alu_lt_ops_input_b, event.b },
-            { Column::alu_lt_ops_result_c, MemoryValue::from<uint1_t>(event.c.as_ff() == 0 && no_tag_err ? 1 : 0) },
+            { Column::alu_lt_ops_result_c, MemoryValue::from<uint1_t>(event.c.as_ff() == 0 && !has_error ? 1 : 0) },
             { Column::alu_sel_op_lte, 1 },
-            { Column::alu_sel_lt_ops, no_tag_err },
+            { Column::alu_sel_lt_ops, has_error ? 0 : 1 },
             { Column::alu_op_id,
               static_cast<uint8_t>(SUBTRACE_INFO_MAP.at(ExecutionOpCode::LTE).subtrace_operation_id) },
             { Column::alu_sel_is_ff, is_ff },
-            { Column::alu_sel_ff_lt_ops, is_ff && no_tag_err },
-            { Column::alu_sel_int_lt_ops, !is_ff && no_tag_err },
+            { Column::alu_sel_ff_lt_ops, is_ff && !has_error ? 1 : 0 },
+            { Column::alu_sel_int_lt_ops, !is_ff && !has_error ? 1 : 0 },
             { Column::alu_tag_ff_diff_inv, tag_inverses[static_cast<uint8_t>(a_tag)] }, // Relies on MemoryTag::FF is 0
         };
     case simulation::AluOperation::NOT: {
@@ -270,15 +269,22 @@ std::vector<std::pair<Column, FF>> AluTraceBuilder::get_operation_specific_colum
     }
 }
 
-std::vector<std::pair<Column, FF>> AluTraceBuilder::get_tag_error_columns(const simulation::AluEvent& event) const
+// We consider the following errors simultaneously:
+// Tag errors:
+//    1. Input tagged as a field for NOT or DIV operations
+//    2. Mismatched tags for inputs a and b for all opcodes apart from TRUNC
+// Division by zero errors:
+//    3. DIV or FDIV operation with b = 0
+std::vector<std::pair<Column, FF>> AluTraceBuilder::get_error_columns(const simulation::AluEvent& event) const
 {
     const MemoryTag a_tag = event.a.get_tag();
     const FF a_tag_ff = static_cast<FF>(static_cast<uint8_t>(a_tag));
     const MemoryTag b_tag = event.b.get_tag();
     const FF b_tag_ff = static_cast<FF>(static_cast<uint8_t>(b_tag));
-    // Tag errors currently have cases:
-    // 1. Input tagged as a field for NOT or DIV operations
-    // 2. Mismatched tags for inputs a and b for all opcodes apart from TRUNC
+
+    std::vector<std::pair<Column, FF>> error_columns = {
+        { Column::alu_sel_err, 1 },
+    };
 
     // Case 1:
     bool ff_tag_err =
@@ -286,30 +292,40 @@ std::vector<std::pair<Column, FF>> AluTraceBuilder::get_tag_error_columns(const 
          (event.operation == simulation::AluOperation::NOT || event.operation == simulation::AluOperation::DIV ||
           event.operation == simulation::AluOperation::SHL || event.operation == simulation::AluOperation::SHR)) ||
         ((a_tag != MemoryTag::FF) && (event.operation == simulation::AluOperation::FDIV));
+
     // Case 2:
     bool ab_tags_mismatch = (a_tag_ff != b_tag_ff) && (event.operation != simulation::AluOperation::TRUNCATE);
-    // Note: both cases can occur at the same time. Case 1 only requires sel_tag_error to be on, so we
-    // check ab_tags_mismatch first:
-    if (ab_tags_mismatch) {
-        return { { Column::alu_sel_tag_err, 1 },
-                 { Column::alu_sel_ab_tag_mismatch, 1 },
-                 { Column::alu_ab_tags_diff_inv, get_tag_diff_inverse(a_tag, b_tag) } };
-    }
-    if (ff_tag_err) {
+
+    // Case 3:
+    bool div_0_error =
+        (event.operation == simulation::AluOperation::DIV || event.operation == simulation::AluOperation::FDIV) &&
+        event.b.as_ff() == 0;
+
+    if (ab_tags_mismatch || ff_tag_err) {
+        error_columns.push_back({ Column::alu_sel_tag_err, 1 });
         // Note: There is no 'alu_sel_ff_tag_err' because we can handle this with existing selectors:
         // (sel_op_div + sel_op_not) * sel_is_ff
-        return { { Column::alu_sel_tag_err, 1 } };
     }
+
+    if (ab_tags_mismatch) {
+        error_columns.push_back({ Column::alu_sel_ab_tag_mismatch, 1 });
+        error_columns.push_back({ Column::alu_ab_tags_diff_inv, get_tag_diff_inverse(a_tag, b_tag) });
+    }
+
+    if (div_0_error) {
+        error_columns.push_back({ Column::alu_sel_div_0_err, 1 });
+    }
+
     // We shouldn't have emitted an event with a tag error when one doesn't exist:
-    assert(false && "ALU Event emitted with tag error, but none exists");
-    return {};
+    assert(error_columns.size() == 1 && "ALU Event emitted with an error, but none exists");
+
+    return error_columns;
 }
 
 void AluTraceBuilder::process(const simulation::EventEmitterInterface<simulation::AluEvent>::Container& events,
                               TraceContainer& trace)
 {
     using C = Column;
-    using simulation::AluError;
 
     uint32_t row = 0;
     for (const auto& event : events) {
@@ -320,12 +336,10 @@ void AluTraceBuilder::process(const simulation::EventEmitterInterface<simulation
                                      : static_cast<uint8_t>(event.a.get_tag());
         const FF b_tag = static_cast<FF>(static_cast<uint8_t>(event.b.get_tag()));
         const FF c_tag = static_cast<FF>(static_cast<uint8_t>(event.c.get_tag()));
-        bool tag_check_failed = event.error.has_value() && event.error == AluError::TAG_ERROR;
-        if (tag_check_failed) {
-            // Tag error specific columns:
-            trace.set(row, get_tag_error_columns(event));
+
+        if (event.error) {
+            trace.set(row, get_error_columns(event));
         }
-        bool div_0_error = event.error.has_value() && event.error == AluError::DIV_0_ERROR;
 
         // Operation specific columns:
         trace.set(row, get_operation_specific_columns(event));
@@ -341,8 +355,6 @@ void AluTraceBuilder::process(const simulation::EventEmitterInterface<simulation
                       { C::alu_ic_tag, c_tag },
                       { C::alu_max_bits, get_tag_bits(static_cast<MemoryTag>(a_tag_u8)) },
                       { C::alu_max_value, get_tag_max_value(static_cast<MemoryTag>(a_tag_u8)) },
-                      { C::alu_sel_div_0_err, div_0_error ? 1 : 0 },
-                      { C::alu_sel_err, tag_check_failed || div_0_error ? 1 : 0 },
                   } });
 
         row++;

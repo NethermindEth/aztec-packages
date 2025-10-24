@@ -22,7 +22,7 @@ class AluTraceBuilder final {
     std::array<FF, NUM_TAGS> tag_inverses;
     std::vector<std::pair<Column, FF>> get_operation_specific_columns(const simulation::AluEvent& event) const;
     FF get_tag_diff_inverse(const MemoryTag a_tag, const MemoryTag b_tag) const;
-    std::vector<std::pair<Column, FF>> get_tag_error_columns(const simulation::AluEvent& event) const;
+    std::vector<std::pair<Column, FF>> get_error_columns(const simulation::AluEvent& event) const;
 };
 
 } // namespace bb::avm2::tracegen
