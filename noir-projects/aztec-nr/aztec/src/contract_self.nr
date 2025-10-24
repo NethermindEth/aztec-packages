@@ -16,10 +16,10 @@ use protocol_types::{
 ///
 /// Once injected, you can use `self` to:
 /// - Access storage: `self.storage.balances.at(owner).read()`
+/// - Call contracts: `self.call(Token::at(address).transfer(recipient, amount))`
+/// - Emit events: `self.emit(event, recipient, delivery_mode)` (private) or `self.emit(event)` (public)
 /// - Get the contract address: `self.address`
 /// - Get the caller: `self.msg_sender()`
-/// - Emit events: `self.emit(event, recipient, delivery_mode)` (private) or `self.emit(event)` (public)
-/// - Call contracts: `self.call(Token::at(address).transfer(recipient, amount))`
 /// - Access low-level Aztec.nr APIs through the context: `self.context`
 ///
 /// # Example
