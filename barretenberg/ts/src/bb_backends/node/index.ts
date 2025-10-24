@@ -21,7 +21,7 @@ export async function createAsyncBackend(
         throw new Error('Native backend requires bb binary.');
       }
       logger(`Using native Unix socket backend: ${bbPath}`);
-      const socket = new BarretenbergNativeSocketAsyncBackend(bbPath, options.threads);
+      const socket = new BarretenbergNativeSocketAsyncBackend(bbPath, options.threads, options.logger);
       return new Barretenberg(socket, options);
     }
 
@@ -36,7 +36,12 @@ export async function createAsyncBackend(
       }
       logger(`Using native shared memory backend (via sync adapter): ${bbPath}`);
       // Use sync backend with adapter to provide async interface
-      const syncBackend = await BarretenbergNativeShmSyncBackend.new(bbPath, options.threads, options.maxClients);
+      const syncBackend = await BarretenbergNativeShmSyncBackend.new(
+        bbPath,
+        options.threads,
+        options.maxClients,
+        options.logger,
+      );
       const asyncBackend = new SyncToAsyncAdapter(syncBackend);
       return new Barretenberg(asyncBackend, options);
     }

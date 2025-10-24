@@ -2,6 +2,7 @@ import { createRequire } from 'module';
 import { spawn, ChildProcess } from 'child_process';
 import { IMsgpackBackendSync } from '../interface.js';
 import { findNapiBinary, findPackageRoot } from './platform.js';
+import readline from 'readline';
 
 // Import the NAPI module
 // The addon is built to the nodejs_module directory
@@ -48,6 +49,7 @@ export class BarretenbergNativeShmSyncBackend implements IMsgpackBackendSync {
     bbBinaryPath: string,
     threads?: number,
     maxClients?: number,
+    logger?: (msg: string) => void,
   ): Promise<BarretenbergNativeShmSyncBackend> {
     if (!addon || !addon.MsgpackClient) {
       throw new Error('Shared memory NAPI not available.');
@@ -60,21 +62,24 @@ export class BarretenbergNativeShmSyncBackend implements IMsgpackBackendSync {
     const clientCount = maxClients ?? 1;
 
     // Set HARDWARE_CONCURRENCY if threads specified
-    const env = threads !== undefined ? { ...process.env, HARDWARE_CONCURRENCY: threads.toString() } : process.env;
+    const env = { ...process.env, HARDWARE_CONCURRENCY: threads !== undefined ? threads.toString() : '1' };
+    // const env = threads !== undefined ? { ...process.env, HARDWARE_CONCURRENCY: threads.toString() } : process.env;
 
     // Spawn bb process with shared memory mode
     const args = [bbBinaryPath, 'msgpack', 'run', '--input', `${shmName}.shm`, '--max-clients', clientCount.toString()];
     const bbProcess = spawn(findPackageRoot() + '/scripts/kill_wrapper.sh', args, {
-      stdio: ['ignore', 'ignore', 'ignore'],
+      stdio: ['ignore', logger ? 'pipe' : 'ignore', logger ? 'pipe' : 'ignore'],
       env,
     });
     // Disconnect from event loop so process can exit. The kill wrapper will reap bb once parent (node) dies.
     bbProcess.unref();
 
-    // Capture stderr for error diagnostics
-    // bbProcess.stderr?.on('data', (data: Buffer) => {
-    //   stderrOutput += data.toString();
-    // });
+    if (bbProcess.stdout && logger) {
+      readline.createInterface({ input: bbProcess.stdout }).on('line', logger);
+    }
+    if (bbProcess.stderr && logger) {
+      readline.createInterface({ input: bbProcess.stderr }).on('line', logger);
+    }
 
     // Track if process has exited
     let processExited = false;

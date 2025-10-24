@@ -52,15 +52,15 @@ export async function proveClientIVC(
   bbBinaryPath: string,
   bbWorkingDirectory: string,
   witnessStack: Uint8Array[],
-  bytecodes: string[],
-  vks: string[],
+  bytecodes: Uint8Array[],
+  vks: Uint8Array[],
   logger: Logger,
 ): Promise<ProofAndVerificationKey<typeof CIVC_PROOF_LENGTH>> {
-  const stepToStruct = (bytecode: string, index: number) => {
+  const stepToStruct = (bytecode: Uint8Array, index: number) => {
     return {
-      bytecode: Buffer.from(bytecode, 'base64'),
+      bytecode,
       witness: witnessStack[index],
-      vk: Buffer.from(vks[index], 'hex'),
+      vk: vks[index],
       functionName: `unknown_${index}`,
     };
   };

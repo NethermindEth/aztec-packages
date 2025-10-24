@@ -5,6 +5,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { IMsgpackBackendAsync } from '../interface.js';
 import { findPackageRoot } from './platform.js';
+import readline from 'readline';
 
 /**
  * Asynchronous native backend that communicates with bb binary via Unix Domain Socket.
@@ -40,7 +41,7 @@ export class BarretenbergNativeSocketAsyncBackend implements IMsgpackBackendAsyn
   private responseBuffer: Buffer | null = null;
   private responseBytesRead: number = 0;
 
-  constructor(bbBinaryPath: string, threads?: number) {
+  constructor(bbBinaryPath: string, threads?: number, logger?: (msg: string) => void) {
     // Create a unique socket path in temp directory
     this.socketPath = path.join(os.tmpdir(), `bb-${process.pid}-${Date.now()}.sock`);
 
@@ -63,11 +64,18 @@ export class BarretenbergNativeSocketAsyncBackend implements IMsgpackBackendAsyn
     // Spawn bb process - it will create the socket server
     const args = [bbBinaryPath, 'msgpack', 'run', '--input', this.socketPath];
     this.process = spawn(findPackageRoot() + '/scripts/kill_wrapper.sh', args, {
-      stdio: ['ignore', 'ignore', 'ignore'],
+      stdio: ['ignore', logger ? 'pipe' : 'ignore', logger ? 'pipe' : 'ignore'],
       env,
     });
     // Disconnect from event loop so process can exit. The kill wrapper will reap bb once parent (node) dies.
     this.process.unref();
+
+    if (this.process.stdout && logger) {
+      readline.createInterface({ input: this.process.stdout }).on('line', logger);
+    }
+    if (this.process.stderr && logger) {
+      readline.createInterface({ input: this.process.stderr }).on('line', logger);
+    }
 
     this.process.on('error', err => {
       if (connectionReject) {
@@ -298,15 +306,8 @@ export class BarretenbergNativeSocketAsyncBackend implements IMsgpackBackendAsyn
   }
 
   async destroy(): Promise<void> {
-    // Cleanup first (closes socket, unrefs everything)
     this.cleanup();
-
-    // Send SIGTERM for graceful shutdown
-    // Process is unref'd so won't block event loop - just kill and return
-    try {
-      this.process.kill('SIGTERM');
-    } catch (e) {
-      // Already dead
-    }
+    this.process.kill('SIGTERM');
+    this.process.removeAllListeners();
   }
 }
