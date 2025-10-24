@@ -8,27 +8,32 @@ export class ClientIvcProof {
   constructor(
     // The proof fields.
     // For native verification, attach public inputs via `attachPublicInputs(publicInputs)`.
+    // Not using Tuple here due to the length being too high.
     public fields: Fr[],
-  ) {}
+  ) {
+    if (fields.length !== CIVC_PROOF_LENGTH) {
+      throw new Error(`Invalid ClientIvcProof length: ${fields.length}`);
+    }
+  }
 
   public attachPublicInputs(publicInputs: Fr[]) {
     return new ClientIvcProofWithPublicInputs([...publicInputs, ...this.fields]);
   }
 
   public isEmpty() {
-    return this.fields.length === 0;
+    return this.fields.every(field => field.isZero());
   }
 
   static empty() {
-    return new ClientIvcProof([]);
+    return new ClientIvcProof(new Array(CIVC_PROOF_LENGTH).fill(Fr.ZERO));
   }
 
-  static random(proofSize = CIVC_PROOF_LENGTH) {
+  static random() {
     // NB: Not using Fr.random here because it slows down some tests that require a large number of txs significantly.
     const reducedFrSize = Fr.SIZE_IN_BYTES - 1;
-    const randomFields = randomBytes(proofSize * reducedFrSize);
+    const randomFields = randomBytes(CIVC_PROOF_LENGTH * reducedFrSize);
     const proof = Array.from(
-      { length: proofSize },
+      { length: CIVC_PROOF_LENGTH },
       (_, i) => new Fr(randomFields.subarray(i * reducedFrSize, (i + 1) * reducedFrSize)),
     );
     return new ClientIvcProof(proof);
@@ -59,7 +64,11 @@ export class ClientIvcProofWithPublicInputs {
     // The proof fields with public inputs.
     // For recursive verification, use without public inputs via `removePublicInputs()`.
     public fieldsWithPublicInputs: Fr[],
-  ) {}
+  ) {
+    if (fieldsWithPublicInputs.length < CIVC_PROOF_LENGTH) {
+      throw new Error(`Invalid ClientIvcProofWithPublicInputs length: ${fieldsWithPublicInputs.length}`);
+    }
+  }
 
   public removePublicInputs() {
     const numPublicInputs = this.fieldsWithPublicInputs.length - CIVC_PROOF_LENGTH;
@@ -67,11 +76,11 @@ export class ClientIvcProofWithPublicInputs {
   }
 
   public isEmpty() {
-    return this.fieldsWithPublicInputs.length === 0;
+    return this.fieldsWithPublicInputs.every(field => field.isZero());
   }
 
   static empty() {
-    return new ClientIvcProofWithPublicInputs([]);
+    return ClientIvcProof.empty().attachPublicInputs([]);
   }
 
   static get schema() {
