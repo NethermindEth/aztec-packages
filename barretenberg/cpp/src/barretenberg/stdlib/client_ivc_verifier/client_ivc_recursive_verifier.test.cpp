@@ -1,6 +1,6 @@
 #include "barretenberg/stdlib/client_ivc_verifier/client_ivc_recursive_verifier.hpp"
 #include "barretenberg/circuit_checker/circuit_checker.hpp"
-#include "barretenberg/client_ivc/test_bench_shared.hpp"
+#include "barretenberg/client_ivc/sumcheck_mock_circuit_producer.hpp"
 #include "barretenberg/common/test.hpp"
 #include "barretenberg/stdlib/honk_verifier/ultra_verification_keys_comparator.hpp"
 
@@ -26,7 +26,7 @@ class ClientIVCRecursionTests : public testing::Test {
     };
 
     /**
-     * @brief Construct a genuine LegacyClientIVC prover output based on accumulation of an arbitrary set of mock
+     * @brief Construct a genuine ClientIVC prover output based on accumulation of an arbitrary set of mock
      * circuits
      *
      */
@@ -46,7 +46,7 @@ class ClientIVCRecursionTests : public testing::Test {
 };
 
 /**
- * @brief Ensure the LegacyClientIVC proof used herein can be natively verified
+ * @brief Ensure the ClientIVC proof used herein can be natively verified
  *
  */
 TEST_F(ClientIVCRecursionTests, NativeVerification)
@@ -58,17 +58,17 @@ TEST_F(ClientIVCRecursionTests, NativeVerification)
 }
 
 /**
- * @brief Construct and Check a recursive LegacyClientIVC verification circuit
+ * @brief Construct and Check a recursive ClientIVC verification circuit
  *
  */
 TEST_F(ClientIVCRecursionTests, Basic)
 {
     using CIVCRecVerifierOutput = ClientIVCRecursiveVerifier::Output;
 
-    // Generate a genuine LegacyClientIVC prover output
+    // Generate a genuine ClientIVC prover output
     auto [proof, vk] = construct_client_ivc_prover_output();
 
-    // Construct the LegacyClientIVC recursive verifier
+    // Construct the ClientIVC recursive verifier
     Builder builder;
     ClientIVCVerifier verifier{ &builder, vk.mega };
 

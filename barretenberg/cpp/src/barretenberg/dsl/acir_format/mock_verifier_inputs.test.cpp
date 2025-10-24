@@ -183,7 +183,7 @@ TYPED_TEST(MockVerifierInputsTest, MockUltraHonkProofSize)
 }
 
 /**
- * @brief Check that the size of a mock LegacyClientIVC proof matches expectation
+ * @brief Check that the size of a mock ClientIVC proof matches expectation
  *
  */
 TEST(MockVerifierInputsTest, MockClientIVCProofSize)

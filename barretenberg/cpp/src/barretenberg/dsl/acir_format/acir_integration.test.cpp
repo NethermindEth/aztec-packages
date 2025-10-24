@@ -4,7 +4,7 @@
 #include "barretenberg/client_ivc/private_execution_steps.hpp"
 #include "barretenberg/common/streams.hpp"
 #include "barretenberg/dsl/acir_format/acir_to_constraint_buf.hpp"
-#include "barretenberg/dsl/acir_format/pg_recursion_constraint.hpp"
+#include "barretenberg/dsl/acir_format/hypernova_recursion_constraint.hpp"
 #include "barretenberg/honk/prover_instance_inspector.hpp"
 
 #include <filesystem>
@@ -478,7 +478,7 @@ TEST_F(AcirIntegrationTest, DISABLED_HonkRecursion)
 }
 
 /**
- * @brief Test LegacyClientIVC proof generation and verification given an ivc-inputs msgpack file
+ * @brief Test ClientIVC proof generation and verification given an ivc-inputs msgpack file
  *
  */
 TEST_F(AcirIntegrationTest, DISABLED_ClientIVCMsgpackInputs)
