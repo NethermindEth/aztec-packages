@@ -71,11 +71,11 @@ View functions cannot modify contract state. They're akin to Ethereum's `view` f
 
 ## Define internal functions
 
-Create contract-only functions using the `#[internal]` annotation:
+Create contract-only functions using the `#[only_self]` annotation:
 
 ```rust
 #[external("public")]
-#[internal]
+#[only_self]
 fn update_counter_public(item: Field) {
     // logic
 }

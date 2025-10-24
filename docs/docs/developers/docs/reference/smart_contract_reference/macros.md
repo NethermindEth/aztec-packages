@@ -15,7 +15,7 @@ It is also worth mentioning Noir's `unconstrained` function type [here (Noir doc
 - `#[initializer]` - If one or more functions are marked as an initializer, then one of them must be called before any non-initializer functions
 - `#[noinitcheck]` - The function is able to be called before an initializer (if one exists)
 - `#[view]` - Makes calls to the function static
-- `#[internal]` - Function can only be called from within the contract
+- `#[only_self]` - Function can only be called from within the contract
 - `#[note]` - Creates a custom note
 - `#[storage]` - Defines contract storage
 

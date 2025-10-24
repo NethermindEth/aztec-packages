@@ -173,12 +173,19 @@ When a function is annotated with `#[noinitcheck]`:
 - The Aztec macro processor skips the [insertion of the initialization check](#initializer-functions-initializer) for this specific function
 - The function can be called at any time, even if the contract hasn't been initialized yet
 
-## `Internal` functions #[internal]
+## #[only_self]
+
+Functions marked with #[only_self] attribute can only be called by the contract itself.
+
+This attribute is commonly used when an action starts in a private but needs to be completed in public. The public
+function must be marked with #[only_self] to restrict access to only the contract itself. A typical example is a private
+token mint operation that needs to enqueue a call to a public function to update the publicly tracked total token
+supply.
 
 This macro inserts a check at the beginning of the function to ensure that the caller is the contract itself. This is done by adding the following assertion:
 
 ```rust
-assert(context.msg_sender() == context.this_address(), "Function can only be called internally");
+assert(context.msg_sender() == context.this_address(), "Function can only be called by the same contract");
 ```
 
 ## Implementing notes
