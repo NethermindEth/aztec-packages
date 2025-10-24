@@ -177,7 +177,7 @@ When a function is annotated with `#[noinitcheck]`:
 
 Functions marked with #[only_self] attribute can only be called by the contract itself.
 
-This attribute is commonly used when an action starts in a private but needs to be completed in public. The public
+This attribute is commonly used when an action starts in private but needs to be completed in public. The public
 function must be marked with #[only_self] to restrict access to only the contract itself. A typical example is a private
 token mint operation that needs to enqueue a call to a public function to update the publicly tracked total token
 supply.

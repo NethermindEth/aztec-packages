@@ -212,6 +212,7 @@ Aztec contracts now automatically inject a `self` parameter into every contract 
 - `self.emit(...)` - Emit events
 
 And soon to be implemented also:
+
 - `self.call(...)` - Make contract calls
 
 #### How it works
@@ -258,15 +259,15 @@ fn new_transfer(amount: u128, recipient: AztecAddress) {
 
 Storage and context are no longer injected into the function as standalone variables and instead you need to access them via `self`:
 
-   ```diff
-   - let balance = storage.balances.at(owner).read();
-   + let balance = self.storage.balances.at(owner).read();
-   ```
+```diff
+- let balance = storage.balances.at(owner).read();
++ let balance = self.storage.balances.at(owner).read();
+```
 
-   ```diff
-   - context.push_nullifier(nullifier);
-   + self.context.push_nullifier(nullifier);
-   ```
+```diff
+- context.push_nullifier(nullifier);
++ self.context.push_nullifier(nullifier);
+```
 
 Note that `context` is expected to be use only when needing to access a low-level API (like directly emitting a nullifier).
 
@@ -328,6 +329,30 @@ fn withdraw(amount: u128, recipient: AztecAddress) {
     // ... withdrawal logic
 
     self.emit(Withdraw { withdrawer, amount }, withdrawer, MessageDelivery.UNCONSTRAINED_ONCHAIN);
+}
+```
+
+### renaming #[internal] as #[only_self]
+
+We want for internal to mean the same as in Solidity where internal function can be called only from the same contract
+and is also inlined (EVM JUMP opcode and not EVM CALL). The original implementation of our `#[internal]` macro also
+results in the function being callable only from the same contract but it results in a different call (hence it doesn't
+map to EVM JUMP). This is very confusing for people that know Solidity hence we are doing the rename. A true
+`#[internal]` will be introduced in the future.
+
+To migrate your contracts simply rename all the occurrences of `#[internal]` with `#[only_self]` and update the imports:
+
+```diff
+- use aztec::macros::functions::internal;
++ use aztec::macros::functions::only_self;
+```
+
+```diff
+#[external("public")]
+- #[internal]
++ #[only_self]
+fn _deduct_public_balance(owner: AztecAddress, amount: u64) {
+    ...
 }
 ```
 
