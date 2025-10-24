@@ -39,7 +39,7 @@ export async function readClientIVCProofFromOutputDirectory(directory: string) {
  */
 export async function writeClientIVCProofToPath(clientIvcProof: ClientIvcProofWithPublicInputs, outputPath: string) {
   // NB: Don't use clientIvcProof.toBuffer here because it will include the proof length.
-  const fieldsBuf = Buffer.concat(clientIvcProof.proofWithPublicInputs.map(field => field.toBuffer()));
+  const fieldsBuf = Buffer.concat(clientIvcProof.fieldsWithPublicInputs.map(field => field.toBuffer()));
   await fs.writeFile(outputPath, fieldsBuf);
 }
 

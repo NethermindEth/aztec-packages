@@ -51,7 +51,7 @@ import {
 } from '@aztec/stdlib/kernel';
 import { PrivateLog } from '@aztec/stdlib/logs';
 import { ScopedL2ToL1Message } from '@aztec/stdlib/messaging';
-import { ClientIvcProofWithoutPublicInputs } from '@aztec/stdlib/proofs';
+import { ClientIvcProof } from '@aztec/stdlib/proofs';
 import {
   CallContext,
   HashedValues,
@@ -489,7 +489,7 @@ export async function generateSimulatedProvingResult(
 
   return {
     publicInputs,
-    clientIvcProof: ClientIvcProofWithoutPublicInputs.empty(),
+    clientIvcProof: ClientIvcProof.empty(),
     executionSteps: executionSteps,
   };
 }

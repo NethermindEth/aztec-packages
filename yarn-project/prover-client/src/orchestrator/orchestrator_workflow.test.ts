@@ -12,7 +12,7 @@ import {
   makePublicInputsAndRecursiveProof,
 } from '@aztec/stdlib/interfaces/server';
 import type { ParityPublicInputs } from '@aztec/stdlib/parity';
-import { ClientIvcProofWithoutPublicInputs, makeRecursiveProof } from '@aztec/stdlib/proofs';
+import { ClientIvcProof, makeRecursiveProof } from '@aztec/stdlib/proofs';
 import { makeParityPublicInputs } from '@aztec/stdlib/testing';
 import { Tx } from '@aztec/stdlib/tx';
 
@@ -162,7 +162,7 @@ describe('prover/orchestrator', () => {
           context.getPreviousBlockHeader(),
         );
 
-        processedTxs.forEach(tx => (tx.clientIvcProof = ClientIvcProofWithoutPublicInputs.random()));
+        processedTxs.forEach(tx => (tx.clientIvcProof = ClientIvcProof.random()));
         const txs = processedTxs.map(tx =>
           Tx.from({
             txHash: tx.hash,

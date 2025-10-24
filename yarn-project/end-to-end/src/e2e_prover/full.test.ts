@@ -10,7 +10,7 @@ import type { FieldsOf } from '@aztec/foundation/types';
 import { FeeJuicePortalAbi, TestERC20Abi } from '@aztec/l1-artifacts';
 import { Gas } from '@aztec/stdlib/gas';
 import { PrivateKernelTailCircuitPublicInputs } from '@aztec/stdlib/kernel';
-import { ClientIvcProofWithoutPublicInputs } from '@aztec/stdlib/proofs';
+import { ClientIvcProof } from '@aztec/stdlib/proofs';
 import type { CircuitName } from '@aztec/stdlib/stats';
 import { TX_ERROR_INVALID_PROOF } from '@aztec/stdlib/tx';
 import { ProvenTx, proveInteraction } from '@aztec/test-wallet/server';
@@ -337,7 +337,7 @@ describe('full_prover', () => {
                 data.forPublic,
                 data.forRollup,
               ),
-              clientIvcProof: ClientIvcProofWithoutPublicInputs.random(),
+              clientIvcProof: ClientIvcProof.random(),
               contractClassLogFields: provenTx.contractClassLogFields,
               publicFunctionCalldata: provenTx.publicFunctionCalldata,
             }),

@@ -56,7 +56,7 @@ import {
   PrivateToPublicAccumulatedData,
   PublicCallRequest,
 } from '@aztec/stdlib/kernel';
-import { ClientIvcProofWithoutPublicInputs } from '@aztec/stdlib/proofs';
+import { ClientIvcProof } from '@aztec/stdlib/proofs';
 import { makeAppendOnlyTreeSnapshot, makeGlobalVariables } from '@aztec/stdlib/testing';
 import { MerkleTreeId } from '@aztec/stdlib/trees';
 import {
@@ -386,7 +386,7 @@ export class TXEOracleTopLevelContext implements IMiscOracle, ITxeExecutionOracl
 
     const tx = await Tx.create({
       data: publicInputs,
-      clientIvcProof: ClientIvcProofWithoutPublicInputs.empty(),
+      clientIvcProof: ClientIvcProof.empty(),
       contractClassLogFields: [],
       publicFunctionCalldata: result.publicFunctionCalldata,
     });
@@ -530,7 +530,7 @@ export class TXEOracleTopLevelContext implements IMiscOracle, ITxeExecutionOracl
 
     const tx = await Tx.create({
       data: txData,
-      clientIvcProof: ClientIvcProofWithoutPublicInputs.empty(),
+      clientIvcProof: ClientIvcProof.empty(),
       contractClassLogFields: [],
       publicFunctionCalldata: [calldataHashedValues],
     });

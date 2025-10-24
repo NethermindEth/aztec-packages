@@ -4,7 +4,7 @@ import { map, sort, toArray } from '@aztec/foundation/iterable';
 import { openTmpStore } from '@aztec/kv-store/lmdb-v2';
 import { GasFees } from '@aztec/stdlib/gas';
 import type { MerkleTreeReadOperations, WorldStateSynchronizer } from '@aztec/stdlib/interfaces/server';
-import { ClientIvcProofWithoutPublicInputs } from '@aztec/stdlib/proofs';
+import { ClientIvcProof } from '@aztec/stdlib/proofs';
 import { mockTx } from '@aztec/stdlib/testing';
 import { BlockHeader, GlobalVariables, Tx, TxHash, type TxValidationResult } from '@aztec/stdlib/tx';
 
@@ -73,9 +73,7 @@ describe('KV TX pool', () => {
     const txs = await timesAsync(5, i => mockTx(i + 1));
     await txPool.addTxs(txs);
 
-    const expectedArchivedTxs = txs.map(tx =>
-      Tx.from({ ...tx, clientIvcProof: ClientIvcProofWithoutPublicInputs.empty() }),
-    );
+    const expectedArchivedTxs = txs.map(tx => Tx.from({ ...tx, clientIvcProof: ClientIvcProof.empty() }));
 
     // delete two txs and assert that they are properly archived
     await txPool.deleteTxs([txs[0].getTxHash(), txs[1].getTxHash()]);
