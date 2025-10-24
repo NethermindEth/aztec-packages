@@ -43,22 +43,25 @@ class ShmTest : public ::testing::Test {
         server_running.store(true, std::memory_order_release);
         server_thread = std::thread([this]() {
             // Echo server: receive message and send it back
-            std::vector<uint8_t> buffer(16UL * 1024 * 1024); // 16MB buffer
 
             while (server_running.load(std::memory_order_acquire)) {
                 // Try to accept connections first (non-blocking)
                 server->accept(0);
 
-                int client_id = server->wait_for_data(100000000); // 100ms timeout
+                int client_id = server->wait_for_data(100000000); // Spin 100ms, then block
                 if (client_id < 0) {
                     continue; // Timeout, check running flag
                 }
 
-                ssize_t n = server->recv(client_id, buffer.data(), buffer.size());
-                if (n > 0) {
+                // Receive message (zero-copy for SHM!)
+                auto request = server->receive(client_id);
+                if (!request.empty()) {
                     // Echo the message back
-                    server->send(client_id, buffer.data(), static_cast<size_t>(n));
+                    server->send(client_id, request.data(), request.size());
                     requests_processed.fetch_add(1, std::memory_order_relaxed);
+
+                    // Release the message
+                    server->release(client_id, request.size());
                 }
             }
         });
