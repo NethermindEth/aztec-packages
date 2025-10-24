@@ -9,39 +9,8 @@ use protocol_types::{
 
 /// `ContractSelf` is the core interface for interacting with an Aztec contract's own state and context.
 ///
-/// This struct is automatically injected into every contract function by the Aztec macro system and is
-/// accessible through the `self` variable. It provides a unified interface for accessing:
-/// - The contract's own address
-/// - The contract's storage
-/// - The execution context (private, public, or utility)
-///
-/// # How It's Injected
-///
-/// When you write a contract function with the `#[external("private")]`, `#[external("public")]`, or
-/// `#[external("utility")]` attributes, the Aztec macro system automatically transforms your function
-/// to include a `self` parameter of type `ContractSelf`.
-///
-/// For example, when you write:
-/// ```noir
-/// #[external("private")]
-/// fn transfer(amount: u128, recipient: AztecAddress) {
-///     // Your code here
-/// }
-/// ```
-///
-/// The macro transforms it to something like:
-/// ```noir
-/// fn transfer(inputs: PrivateContextInputs, amount: u128, recipient: AztecAddress) -> PrivateCircuitPublicInputs {
-///     let mut self = {
-///         let mut context = PrivateContext::new(inputs, args_hash);
-///         let storage = Storage::init(&mut context);
-///         ContractSelf::new_private(&mut context, storage)
-///     };
-///     // Your original code executes here with `self` available
-///     // ...
-///     self.context.finish()
-/// }
-/// ```
+/// This struct is automatically injected into every #[external(...)] contract function by the Aztec macro system and is
+/// accessible through the `self` variable.
 ///
 /// # Usage in Contract Functions
 ///
@@ -49,9 +18,9 @@ use protocol_types::{
 /// - Access storage: `self.storage.balances.at(owner).read()`
 /// - Get the contract address: `self.address`
 /// - Get the caller: `self.msg_sender()`
-/// - Access the context: `self.context`
 /// - Emit events: `self.emit(event, recipient, delivery_mode)` (private) or `self.emit(event)` (public)
 /// - Call contracts: `self.call(Token::at(address).transfer(recipient, amount))`
+/// - Access low-level Aztec.nr APIs through the context: `self.context`
 ///
 /// # Example
 ///
