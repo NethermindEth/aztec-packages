@@ -6,7 +6,7 @@ pub contract Child {
     use dep::aztec::protocol_types::address::AztecAddress;
 
     use dep::aztec::{
-        macros::{functions::{external, only_self}, storage::storage},
+        macros::{functions::external, storage::storage},
         messages::message_delivery::MessageDelivery,
         note::{note_getter_options::NoteGetterOptions, note_interface::NoteProperties},
         state_vars::{Map, PrivateSet, PublicMutable},
