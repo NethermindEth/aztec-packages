@@ -54,6 +54,7 @@ pub(crate) comptime fn transform_private(f: FunctionDefinition) {
     };
 
     let contract_self_creation = quote {
+        #[allow(unused_variables)]
         let mut self = {
             $args_serialization
             let args_hash = aztec::hash::hash_args_array($serialized_args_name);
@@ -220,6 +221,7 @@ pub(crate) comptime fn transform_public(f: FunctionDefinition) {
 
     // Unlike in the private case, in public the `context` does not need to receive the hash of the original params.
     let contract_self_creation = quote {
+        #[allow(unused_variables)]
         let mut self = {
             let mut context = dep::aztec::context::public_context::PublicContext::new(|| {
             // We start from 1 because we skip the selector for the dispatch function.
@@ -315,6 +317,7 @@ pub(crate) comptime fn transform_utility(f: FunctionDefinition) {
 
     // Create utility context
     let contract_self_creation = quote {
+        #[allow(unused_variables)]
         let mut self = {
             let context = dep::aztec::context::utility_context::UtilityContext::new();
             $storage_init
