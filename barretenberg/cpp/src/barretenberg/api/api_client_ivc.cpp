@@ -2,8 +2,8 @@
 #include "barretenberg/api/file_io.hpp"
 #include "barretenberg/api/log.hpp"
 #include "barretenberg/bbapi/bbapi.hpp"
+#include "barretenberg/client_ivc/client_ivc.hpp"
 #include "barretenberg/client_ivc/private_execution_steps.hpp"
-#include "barretenberg/client_ivc/sumcheck_client_ivc.hpp"
 #include "barretenberg/client_ivc/sumcheck_mock_circuit_producer.hpp"
 #include "barretenberg/common/get_bytecode.hpp"
 #include "barretenberg/common/map.hpp"
@@ -44,7 +44,7 @@ void write_standalone_vk(std::vector<uint8_t> bytecode, const std::filesystem::p
 void write_civc_vk(std::vector<uint8_t> bytecode, const std::filesystem::path& output_dir)
 {
     // compute the hiding kernel's vk
-    info("SumcheckClientIVC: computing IVC vk for hiding kernel circuit");
+    info("ClientIVC: computing IVC vk for hiding kernel circuit");
     auto response = bbapi::ClientIvcComputeIvcVk{ .circuit{ .bytecode = std::move(bytecode) } }.execute();
     const bool output_to_stdout = output_dir == "-";
     if (output_to_stdout) {
@@ -65,14 +65,14 @@ void ClientIVCAPI::prove(const Flags& flags,
     std::vector<PrivateExecutionStepRaw> raw_steps = PrivateExecutionStepRaw::load_and_decompress(input_path);
 
     bbapi::ClientIvcStart{ .num_circuits = raw_steps.size() }.execute(request);
-    info("SumcheckClientIVC: starting with ", raw_steps.size(), " circuits");
+    info("ClientIVC: starting with ", raw_steps.size(), " circuits");
     for (const auto& step : raw_steps) {
         bbapi::ClientIvcLoad{
             .circuit = { .name = step.function_name, .bytecode = step.bytecode, .verification_key = step.vk }
         }.execute(request);
 
         // NOLINTNEXTLINE(bugprone-unchecked-optional-access): we know the optional has been set here.
-        info("SumcheckClientIVC: accumulating " + step.function_name);
+        info("ClientIVC: accumulating " + step.function_name);
         bbapi::ClientIvcAccumulate{ .witness = step.witness }.execute(request);
     }
 
@@ -85,10 +85,10 @@ void ClientIVCAPI::prove(const Flags& flags,
     const auto write_proof = [&]() {
         const auto buf = to_buffer(proof.to_field_elements());
         if (output_to_stdout) {
-            vinfo("writing SumcheckClientIVC proof to stdout");
+            vinfo("writing ClientIVC proof to stdout");
             write_bytes_to_stdout(buf);
         } else {
-            vinfo("writing SumcheckClientIVC proof in directory ", output_dir);
+            vinfo("writing ClientIVC proof in directory ", output_dir);
             write_file(output_dir / "proof", buf);
         }
     };
@@ -96,7 +96,7 @@ void ClientIVCAPI::prove(const Flags& flags,
     write_proof();
 
     if (flags.write_vk) {
-        vinfo("writing SumcheckClientIVC vk in directory ", output_dir);
+        vinfo("writing ClientIVC vk in directory ", output_dir);
         // write CIVC vk using the bytecode of the hiding circuit (the last step of the execution)
         write_civc_vk(raw_steps[raw_steps.size() - 1].bytecode, output_dir);
     }
@@ -109,7 +109,7 @@ bool ClientIVCAPI::verify([[maybe_unused]] const Flags& flags,
 {
     BB_BENCH_NAME("ClientIVCAPI::verify");
     auto proof_fields = many_from_buffer<fr>(read_file(proof_path));
-    auto proof = SumcheckClientIVC::Proof::from_field_elements(proof_fields);
+    auto proof = ClientIVC::Proof::from_field_elements(proof_fields);
 
     auto vk_buffer = read_file(vk_path);
 
@@ -123,11 +123,11 @@ bool ClientIVCAPI::prove_and_verify(const std::filesystem::path& input_path)
     PrivateExecutionSteps steps;
     steps.parse(PrivateExecutionStepRaw::load_and_decompress(input_path));
 
-    std::shared_ptr<SumcheckClientIVC> ivc = steps.accumulate();
+    std::shared_ptr<ClientIVC> ivc = steps.accumulate();
     // Construct the hiding kernel as the final step of the IVC
 
     auto proof = ivc->prove();
-    const bool verified = SumcheckClientIVC::verify(proof, ivc->get_vk());
+    const bool verified = ClientIVC::verify(proof, ivc->get_vk());
     return verified;
 }
 

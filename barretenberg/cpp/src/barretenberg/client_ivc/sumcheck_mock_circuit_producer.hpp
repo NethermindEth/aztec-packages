@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "barretenberg/client_ivc/sumcheck_client_ivc.hpp"
+#include "barretenberg/client_ivc/client_ivc.hpp"
 #include "barretenberg/common/bb_bench.hpp"
 #include "barretenberg/goblin/mock_circuits.hpp"
 #include "barretenberg/stdlib_circuit_builders/ultra_circuit_builder.hpp"
@@ -24,7 +24,7 @@ namespace {
  */
 class MockDatabusProducer {
   private:
-    using ClientCircuit = SumcheckClientIVC::ClientCircuit;
+    using ClientCircuit = ClientIVC::ClientCircuit;
     using Flavor = MegaFlavor;
     using FF = Flavor::FF;
     using BusDataArray = std::vector<FF>;
@@ -110,7 +110,7 @@ struct TestSettings {
  * testing consecutive kernels. These can be configured via TestSettings.
  */
 class PrivateFunctionExecutionMockCircuitProducer {
-    using ClientCircuit = SumcheckClientIVC::ClientCircuit;
+    using ClientCircuit = ClientIVC::ClientCircuit;
     using Flavor = MegaFlavor;
     using VerificationKey = Flavor::VerificationKey;
 
@@ -149,8 +149,8 @@ class PrivateFunctionExecutionMockCircuitProducer {
 
         // Deepcopy the opqueue to avoid modifying the original one when finalising the circuit
         builder.op_queue = std::make_shared<ECCOpQueue>(*builder.op_queue);
-        std::shared_ptr<SumcheckClientIVC::ProverInstance> prover_instance =
-            std::make_shared<SumcheckClientIVC::ProverInstance>(builder);
+        std::shared_ptr<ClientIVC::ProverInstance> prover_instance =
+            std::make_shared<ClientIVC::ProverInstance>(builder);
         std::shared_ptr<VerificationKey> vk = std::make_shared<VerificationKey>(prover_instance->get_precomputed());
         return vk;
     }
@@ -161,7 +161,7 @@ class PrivateFunctionExecutionMockCircuitProducer {
      * large.
      *
      */
-    ClientCircuit create_next_circuit(SumcheckClientIVC& ivc,
+    ClientCircuit create_next_circuit(ClientIVC& ivc,
                                       size_t log2_num_gates = 0,
                                       size_t num_public_inputs = 0,
                                       bool check_circuit_sizes = false)
@@ -195,7 +195,7 @@ class PrivateFunctionExecutionMockCircuitProducer {
         }
 
         if (check_circuit_sizes) {
-            auto prover_instance = std::make_shared<SumcheckClientIVC::ProverInstance>(circuit);
+            auto prover_instance = std::make_shared<ClientIVC::ProverInstance>(circuit);
             size_t log2_dyadic_size = numeric::get_msb(prover_instance->get_metadata().dyadic_size);
             if (log2_num_gates != 0) {
                 if (is_kernel) {
@@ -232,7 +232,7 @@ class PrivateFunctionExecutionMockCircuitProducer {
      * @brief Create the next circuit (app/kernel) in a mocked private function execution stack
      */
     std::pair<ClientCircuit, std::shared_ptr<VerificationKey>> create_next_circuit_and_vk(
-        SumcheckClientIVC& ivc, TestSettings settings = {}, bool check_circuit_size = false)
+        ClientIVC& ivc, TestSettings settings = {}, bool check_circuit_size = false)
     {
         // If this is a mock hiding kernel, remove the settings and use a default (non-structured) trace
         if (ivc.num_circuits_accumulated == ivc.get_num_circuits() - 1) {
@@ -243,7 +243,7 @@ class PrivateFunctionExecutionMockCircuitProducer {
         return { circuit, get_verification_key(circuit) };
     }
 
-    void construct_and_accumulate_next_circuit(SumcheckClientIVC& ivc,
+    void construct_and_accumulate_next_circuit(ClientIVC& ivc,
                                                TestSettings settings = {},
                                                bool check_circuit_sizes = false)
     {

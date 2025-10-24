@@ -540,11 +540,11 @@ void process_pg_recursion_constraints(MegaCircuitBuilder& builder,
                                       bool has_valid_witness_assignments,
                                       GateCounter<MegaCircuitBuilder>& gate_counter)
 {
-    using StdlibVerificationKey = SumcheckClientIVC::RecursiveVerificationKey;
-    using StdlibVKAndHash = SumcheckClientIVC::RecursiveVKAndHash;
-    using StdlibFF = SumcheckClientIVC::RecursiveFlavor::FF;
+    using StdlibVerificationKey = ClientIVC::RecursiveVerificationKey;
+    using StdlibVKAndHash = ClientIVC::RecursiveVKAndHash;
+    using StdlibFF = ClientIVC::RecursiveFlavor::FF;
 
-    // Lambda template to handle both SumcheckClientIVC and SumcheckClientIVC with the same code
+    // Lambda template to handle both ClientIVC and ClientIVC with the same code
     auto process_with_ivc = [&]<typename IVCType>(const std::shared_ptr<IVCType>& ivc) {
         // We expect the length of the internal verification queue to match the number of ivc recursion constraints
         BB_ASSERT_EQ(constraints.pg_recursion_constraints.size(),
@@ -610,7 +610,7 @@ void process_pg_recursion_constraints(MegaCircuitBuilder& builder,
         auto mock_ivc = create_mock_sumcheck_ivc_from_constraints(constraints.pg_recursion_constraints);
         process_with_ivc(mock_ivc);
     } else {
-        auto sumcheck_ivc = std::static_pointer_cast<SumcheckClientIVC>(ivc_base);
+        auto sumcheck_ivc = std::static_pointer_cast<ClientIVC>(ivc_base);
         process_with_ivc(sumcheck_ivc);
     }
 }

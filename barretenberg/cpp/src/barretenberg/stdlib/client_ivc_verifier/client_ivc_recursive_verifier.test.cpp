@@ -9,13 +9,13 @@ class ClientIVCRecursionTests : public testing::Test {
   public:
     using Builder = UltraCircuitBuilder;
     using ClientIVCVerifier = ClientIVCRecursiveVerifier;
-    using Proof = SumcheckClientIVC::Proof;
+    using Proof = ClientIVC::Proof;
     using StdlibProof = ClientIVCVerifier::StdlibProof;
     using RollupFlavor = UltraRollupRecursiveFlavor_<Builder>;
     using NativeFlavor = RollupFlavor::NativeFlavor;
     using UltraRecursiveVerifier = UltraRecursiveVerifier_<RollupFlavor>;
     using MockCircuitProducer = PrivateFunctionExecutionMockCircuitProducer;
-    using IVCVerificationKey = SumcheckClientIVC::VerificationKey;
+    using IVCVerificationKey = ClientIVC::VerificationKey;
     using PairingAccumulator = PairingPoints<Builder>;
 
     static void SetUpTestSuite() { bb::srs::init_file_crs_factory(bb::srs::bb_crs_path()); }
@@ -35,7 +35,7 @@ class ClientIVCRecursionTests : public testing::Test {
         // Construct and accumulate a series of mocked private function execution circuits
         MockCircuitProducer circuit_producer{ num_app_circuits };
         const size_t NUM_CIRCUITS = circuit_producer.total_num_circuits;
-        SumcheckClientIVC ivc{ NUM_CIRCUITS };
+        ClientIVC ivc{ NUM_CIRCUITS };
 
         for (size_t idx = 0; idx < NUM_CIRCUITS; ++idx) {
             circuit_producer.construct_and_accumulate_next_circuit(ivc);
@@ -54,7 +54,7 @@ TEST_F(ClientIVCRecursionTests, NativeVerification)
     auto [proof, vk] = construct_client_ivc_prover_output();
 
     // Confirm that the IVC proof can be natively verified
-    EXPECT_TRUE(SumcheckClientIVC::verify(proof, vk));
+    EXPECT_TRUE(ClientIVC::verify(proof, vk));
 }
 
 /**

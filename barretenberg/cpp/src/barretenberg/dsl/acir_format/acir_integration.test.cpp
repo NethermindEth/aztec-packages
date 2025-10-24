@@ -1,4 +1,4 @@
-#include "barretenberg/client_ivc/sumcheck_client_ivc.hpp"
+#include "barretenberg/client_ivc/client_ivc.hpp"
 #ifndef __wasm__
 #include "barretenberg/circuit_checker/circuit_checker.hpp"
 #include "barretenberg/client_ivc/private_execution_steps.hpp"
@@ -493,8 +493,8 @@ TEST_F(AcirIntegrationTest, DISABLED_ClientIVCMsgpackInputs)
     PrivateExecutionSteps steps;
     steps.parse(PrivateExecutionStepRaw::load_and_decompress(input_path));
 
-    std::shared_ptr<SumcheckClientIVC> ivc = steps.accumulate();
-    SumcheckClientIVC::Proof proof = ivc->prove();
+    std::shared_ptr<ClientIVC> ivc = steps.accumulate();
+    ClientIVC::Proof proof = ivc->prove();
 
     EXPECT_TRUE(ivc->verify(proof, ivc->get_vk()));
 }

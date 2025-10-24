@@ -85,13 +85,13 @@ WASM_EXPORT void acir_prove_aztec_client(uint8_t const* ivc_inputs_buf, uint8_t*
     auto start = std::chrono::steady_clock::now();
     PrivateExecutionSteps steps;
     steps.parse(PrivateExecutionStepRaw::parse_uncompressed(ivc_inputs_vec));
-    std::shared_ptr<SumcheckClientIVC> ivc = steps.accumulate();
+    std::shared_ptr<ClientIVC> ivc = steps.accumulate();
     auto end = std::chrono::steady_clock::now();
     auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     vinfo("time to construct and accumulate all circuits: ", diff.count());
 
     vinfo("calling ivc.prove ...");
-    SumcheckClientIVC::Proof proof = ivc->prove();
+    ClientIVC::Proof proof = ivc->prove();
     end = std::chrono::steady_clock::now();
 
     diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -112,10 +112,10 @@ WASM_EXPORT void acir_prove_aztec_client(uint8_t const* ivc_inputs_buf, uint8_t*
 
 WASM_EXPORT void acir_verify_aztec_client(uint8_t const* proof_buf, uint8_t const* vk_buf, bool* result)
 {
-    const auto proof = SumcheckClientIVC::Proof::from_msgpack_buffer(proof_buf);
-    const auto vk = from_buffer<SumcheckClientIVC::VerificationKey>(from_buffer<std::vector<uint8_t>>(vk_buf));
+    const auto proof = ClientIVC::Proof::from_msgpack_buffer(proof_buf);
+    const auto vk = from_buffer<ClientIVC::VerificationKey>(from_buffer<std::vector<uint8_t>>(vk_buf));
 
-    *result = SumcheckClientIVC::verify(proof, vk);
+    *result = ClientIVC::verify(proof, vk);
 }
 
 WASM_EXPORT void acir_prove_ultra_zk_honk(uint8_t const* acir_vec,
@@ -455,7 +455,7 @@ WASM_EXPORT void acir_gates_aztec_client(uint8_t const* ivc_inputs_buf, uint8_t*
     auto raw_steps = PrivateExecutionStepRaw::parse_uncompressed(ivc_inputs_vec);
     std::vector<uint32_t> totals;
 
-    auto ivc = std::make_shared<SumcheckClientIVC>(/*num_circuits=*/raw_steps.size());
+    auto ivc = std::make_shared<ClientIVC>(/*num_circuits=*/raw_steps.size());
     const acir_format::ProgramMetadata metadata{ ivc };
 
     for (const PrivateExecutionStepRaw& step : raw_steps) {

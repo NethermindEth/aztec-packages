@@ -29,7 +29,7 @@ class CivcRecursionConstraintTest : public ::testing::Test {
 
     struct ClientIVCData {
         std::shared_ptr<MegaZKVerificationKey> mega_vk;
-        SumcheckClientIVC::Proof proof;
+        ClientIVC::Proof proof;
     };
 
     static ClientIVCData get_civc_data()
@@ -38,13 +38,13 @@ class CivcRecursionConstraintTest : public ::testing::Test {
 
         PrivateFunctionExecutionMockCircuitProducer circuit_producer(NUM_APP_CIRCUITS);
         const size_t num_circuits = circuit_producer.total_num_circuits;
-        SumcheckClientIVC ivc{ num_circuits };
+        ClientIVC ivc{ num_circuits };
 
         for (size_t j = 0; j < num_circuits; ++j) {
             circuit_producer.construct_and_accumulate_next_circuit(ivc);
         }
 
-        SumcheckClientIVC::Proof proof = ivc.prove();
+        ClientIVC::Proof proof = ivc.prove();
         return { ivc.get_vk().mega, proof };
     }
 

@@ -1,4 +1,4 @@
-#include "barretenberg/client_ivc/sumcheck_client_ivc.hpp"
+#include "barretenberg/client_ivc/client_ivc.hpp"
 #include "barretenberg/client_ivc/sumcheck_mock_circuit_producer.hpp"
 #include "barretenberg/client_ivc/sumcheck_test_bench_shared.hpp"
 #include "barretenberg/common/assert.hpp"
@@ -22,14 +22,14 @@ class SumcheckClientIVCTests : public ::testing::Test {
   protected:
     static void SetUpTestSuite() { bb::srs::init_file_crs_factory(bb::srs::bb_crs_path()); }
 
-    using Flavor = SumcheckClientIVC::Flavor;
+    using Flavor = ClientIVC::Flavor;
     using FF = typename Flavor::FF;
     using Commitment = Flavor::Commitment;
     using VerificationKey = Flavor::VerificationKey;
-    using Builder = SumcheckClientIVC::ClientCircuit;
-    using ProverInstance = SumcheckClientIVC::ProverInstance;
-    using VerifierInstance = SumcheckClientIVC::VerifierInstance;
-    using DeciderProver = SumcheckClientIVC::DeciderProver;
+    using Builder = ClientIVC::ClientCircuit;
+    using ProverInstance = ClientIVC::ProverInstance;
+    using VerifierInstance = ClientIVC::VerifierInstance;
+    using DeciderProver = ClientIVC::DeciderProver;
     using CircuitProducer = PrivateFunctionExecutionMockCircuitProducer;
 
   public:
@@ -51,12 +51,12 @@ class SumcheckClientIVCTests : public ::testing::Test {
         }
     }
 
-    static std::pair<SumcheckClientIVC::Proof, SumcheckClientIVC::VerificationKey> accumulate_and_prove_ivc(
+    static std::pair<ClientIVC::Proof, ClientIVC::VerificationKey> accumulate_and_prove_ivc(
         size_t num_app_circuits, TestSettings settings = {}, bool check_circuit_sizes = false)
     {
         CircuitProducer circuit_producer(num_app_circuits);
         const size_t num_circuits = circuit_producer.total_num_circuits;
-        SumcheckClientIVC ivc{ num_circuits };
+        ClientIVC ivc{ num_circuits };
 
         for (size_t j = 0; j < num_circuits; ++j) {
             circuit_producer.construct_and_accumulate_next_circuit(ivc, settings, check_circuit_sizes);
@@ -79,14 +79,14 @@ TEST_F(SumcheckClientIVCTests, TestCircuitSizes)
     // Check circuit sizes when no settings are passed
     {
         auto [proof, vk] = accumulate_and_prove_ivc(NUM_APP_CIRCUITS, {}, true);
-        EXPECT_TRUE(SumcheckClientIVC::verify(proof, vk));
+        EXPECT_TRUE(ClientIVC::verify(proof, vk));
     }
 
     // Check circuit sizes when no settings are passed
     {
         auto [proof, vk] =
             accumulate_and_prove_ivc(NUM_APP_CIRCUITS, { .log2_num_gates = SMALL_LOG_2_NUM_GATES }, true);
-        EXPECT_TRUE(SumcheckClientIVC::verify(proof, vk));
+        EXPECT_TRUE(ClientIVC::verify(proof, vk));
     }
 };
 
@@ -101,7 +101,7 @@ TEST_F(SumcheckClientIVCTests, Basic)
     const size_t NUM_APP_CIRCUITS = 5;
     auto [proof, vk] = accumulate_and_prove_ivc(NUM_APP_CIRCUITS);
 
-    EXPECT_TRUE(SumcheckClientIVC::verify(proof, vk));
+    EXPECT_TRUE(ClientIVC::verify(proof, vk));
 };
 
 /**
@@ -121,7 +121,7 @@ TEST_F(SumcheckClientIVCTests, BadProofFailure)
 
         CircuitProducer circuit_producer(NUM_APP_CIRCUITS);
         const size_t NUM_CIRCUITS = circuit_producer.total_num_circuits;
-        SumcheckClientIVC ivc{ NUM_CIRCUITS };
+        ClientIVC ivc{ NUM_CIRCUITS };
         TestSettings settings{ .log2_num_gates = SMALL_LOG_2_NUM_GATES };
 
         // Construct and accumulate a set of mocked private function execution circuits
@@ -129,14 +129,14 @@ TEST_F(SumcheckClientIVCTests, BadProofFailure)
             circuit_producer.construct_and_accumulate_next_circuit(ivc, settings);
         }
         auto proof = ivc.prove();
-        EXPECT_TRUE(SumcheckClientIVC::verify(proof, ivc.get_vk()));
+        EXPECT_TRUE(ClientIVC::verify(proof, ivc.get_vk()));
     }
 
     // The IVC throws an exception if the FIRST fold proof is tampered with
     {
         CircuitProducer circuit_producer(NUM_APP_CIRCUITS);
         const size_t NUM_CIRCUITS = circuit_producer.total_num_circuits;
-        SumcheckClientIVC ivc{ NUM_CIRCUITS };
+        ClientIVC ivc{ NUM_CIRCUITS };
 
         size_t num_public_inputs = 0;
 
@@ -157,14 +157,14 @@ TEST_F(SumcheckClientIVCTests, BadProofFailure)
             }
         }
         auto proof = ivc.prove();
-        EXPECT_FALSE(SumcheckClientIVC::verify(proof, ivc.get_vk()));
+        EXPECT_FALSE(ClientIVC::verify(proof, ivc.get_vk()));
     }
 
     // The IVC fails if the SECOND fold proof is tampered with
     {
         CircuitProducer circuit_producer(NUM_APP_CIRCUITS);
         const size_t NUM_CIRCUITS = circuit_producer.total_num_circuits;
-        SumcheckClientIVC ivc{ NUM_CIRCUITS };
+        ClientIVC ivc{ NUM_CIRCUITS };
 
         // Construct and accumulate a set of mocked private function execution circuits
         for (size_t idx = 0; idx < NUM_CIRCUITS; ++idx) {
@@ -179,7 +179,7 @@ TEST_F(SumcheckClientIVCTests, BadProofFailure)
             }
         }
         auto proof = ivc.prove();
-        EXPECT_FALSE(SumcheckClientIVC::verify(proof, ivc.get_vk()));
+        EXPECT_FALSE(ClientIVC::verify(proof, ivc.get_vk()));
     }
 
     EXPECT_TRUE(true);
@@ -195,48 +195,48 @@ TEST_F(SumcheckClientIVCTests, WrongProofComponentFailure)
     // Produce two valid proofs
     auto [civc_proof_1, civc_vk_1] = accumulate_and_prove_ivc(/*num_app_circuits=*/1);
     {
-        EXPECT_TRUE(SumcheckClientIVC::verify(civc_proof_1, civc_vk_1));
+        EXPECT_TRUE(ClientIVC::verify(civc_proof_1, civc_vk_1));
     }
 
     auto [civc_proof_2, civc_vk_2] = accumulate_and_prove_ivc(/*num_app_circuits=*/1);
     {
-        EXPECT_TRUE(SumcheckClientIVC::verify(civc_proof_2, civc_vk_2));
+        EXPECT_TRUE(ClientIVC::verify(civc_proof_2, civc_vk_2));
     }
 
     {
         // Replace Merge proof
-        SumcheckClientIVC::Proof tampered_proof = civc_proof_1;
+        ClientIVC::Proof tampered_proof = civc_proof_1;
 
         tampered_proof.goblin_proof.merge_proof = civc_proof_2.goblin_proof.merge_proof;
 
-        EXPECT_THROW_OR_ABORT(SumcheckClientIVC::verify(tampered_proof, civc_vk_1), ".*IPA verification fails.*");
+        EXPECT_THROW_OR_ABORT(ClientIVC::verify(tampered_proof, civc_vk_1), ".*IPA verification fails.*");
     }
 
     {
         // Replace hiding circuit proof
-        SumcheckClientIVC::Proof tampered_proof = civc_proof_1;
+        ClientIVC::Proof tampered_proof = civc_proof_1;
 
         tampered_proof.mega_proof = civc_proof_2.mega_proof;
 
-        EXPECT_THROW_OR_ABORT(SumcheckClientIVC::verify(tampered_proof, civc_vk_1), ".*IPA verification fails.*");
+        EXPECT_THROW_OR_ABORT(ClientIVC::verify(tampered_proof, civc_vk_1), ".*IPA verification fails.*");
     }
 
     {
         // Replace ECCVM proof
-        SumcheckClientIVC::Proof tampered_proof = civc_proof_1;
+        ClientIVC::Proof tampered_proof = civc_proof_1;
 
         tampered_proof.goblin_proof.eccvm_proof = civc_proof_2.goblin_proof.eccvm_proof;
 
-        EXPECT_THROW_OR_ABORT(SumcheckClientIVC::verify(tampered_proof, civc_vk_1), ".*IPA verification fails.*");
+        EXPECT_THROW_OR_ABORT(ClientIVC::verify(tampered_proof, civc_vk_1), ".*IPA verification fails.*");
     }
 
     {
         // Replace Translator proof
-        SumcheckClientIVC::Proof tampered_proof = civc_proof_1;
+        ClientIVC::Proof tampered_proof = civc_proof_1;
 
         tampered_proof.goblin_proof.translator_proof = civc_proof_2.goblin_proof.translator_proof;
 
-        EXPECT_FALSE(SumcheckClientIVC::verify(tampered_proof, civc_vk_1));
+        EXPECT_FALSE(ClientIVC::verify(tampered_proof, civc_vk_1));
     }
 };
 
@@ -251,13 +251,13 @@ TEST_F(SumcheckClientIVCTests, VKIndependenceFromNumberOfCircuits)
     auto [unused_1, civc_vk_1] = accumulate_and_prove_ivc(/*num_app_circuits=*/1, settings);
     auto [unused_2, civc_vk_2] = accumulate_and_prove_ivc(/*num_app_circuits=*/3, settings);
 
-    // Check the equality of the Mega components of the SumcheckClientIVC VKeys.
+    // Check the equality of the Mega components of the ClientIVC VKeys.
     EXPECT_EQ(*civc_vk_1.mega.get(), *civc_vk_2.mega.get());
 
-    // Check the equality of the ECCVM components of the SumcheckClientIVC VKeys.
+    // Check the equality of the ECCVM components of the ClientIVC VKeys.
     EXPECT_EQ(*civc_vk_1.eccvm.get(), *civc_vk_2.eccvm.get());
 
-    // Check the equality of the Translator components of the SumcheckClientIVC VKeys.
+    // Check the equality of the Translator components of the ClientIVC VKeys.
     EXPECT_EQ(*civc_vk_1.translator.get(), *civc_vk_2.translator.get());
 };
 
@@ -278,13 +278,13 @@ TEST_F(SumcheckClientIVCTests, VKIndependenceFromCircuitSize)
     auto [unused_1, civc_vk_1] = accumulate_and_prove_ivc(NUM_APP_CIRCUITS, settings_1);
     auto [unused_2, civc_vk_2] = accumulate_and_prove_ivc(NUM_APP_CIRCUITS, settings_2);
 
-    // Check the equality of the Mega components of the SumcheckClientIVC VKeys.
+    // Check the equality of the Mega components of the ClientIVC VKeys.
     EXPECT_EQ(*civc_vk_1.mega.get(), *civc_vk_2.mega.get());
 
-    // Check the equality of the ECCVM components of the SumcheckClientIVC VKeys.
+    // Check the equality of the ECCVM components of the ClientIVC VKeys.
     EXPECT_EQ(*civc_vk_1.eccvm.get(), *civc_vk_2.eccvm.get());
 
-    // Check the equality of the Translator components of the SumcheckClientIVC VKeys.
+    // Check the equality of the Translator components of the ClientIVC VKeys.
     EXPECT_EQ(*civc_vk_1.translator.get(), *civc_vk_2.translator.get());
 };
 
@@ -299,7 +299,7 @@ HEAVY_TEST(SumcheckClientIVCKernelCapacity, MaxCapacityPassing)
     const size_t NUM_APP_CIRCUITS = 24;
     auto [proof, vk] = SumcheckClientIVCTests::accumulate_and_prove_ivc(NUM_APP_CIRCUITS);
 
-    bool verified = SumcheckClientIVC::verify(proof, vk);
+    bool verified = ClientIVC::verify(proof, vk);
     EXPECT_TRUE(verified);
 };
 
@@ -316,31 +316,31 @@ TEST_F(SumcheckClientIVCTests, MsgpackProofFromFileOrBuffer)
     { // Serialize/deserialize the proof to/from a file, check that it verifies
         const std::string filename = "proof.msgpack";
         proof.to_file_msgpack(filename);
-        auto proof_deserialized = SumcheckClientIVC::Proof::from_file_msgpack(filename);
+        auto proof_deserialized = ClientIVC::Proof::from_file_msgpack(filename);
 
-        EXPECT_TRUE(SumcheckClientIVC::verify(proof_deserialized, vk));
+        EXPECT_TRUE(ClientIVC::verify(proof_deserialized, vk));
     }
 
     { // Serialize/deserialize proof to/from a heap buffer, check that it verifies
         uint8_t* buffer = proof.to_msgpack_heap_buffer();
         auto uint8_buffer = from_buffer<std::vector<uint8_t>>(buffer);
         uint8_t const* uint8_ptr = uint8_buffer.data();
-        auto proof_deserialized = SumcheckClientIVC::Proof::from_msgpack_buffer(uint8_ptr);
+        auto proof_deserialized = ClientIVC::Proof::from_msgpack_buffer(uint8_ptr);
 
-        EXPECT_TRUE(SumcheckClientIVC::verify(proof_deserialized, vk));
+        EXPECT_TRUE(ClientIVC::verify(proof_deserialized, vk));
     }
 
     { // Check that attempting to deserialize a proof from a buffer with random bytes fails gracefully
         msgpack::sbuffer buffer = proof.to_msgpack_buffer();
-        auto proof_deserialized = SumcheckClientIVC::Proof::from_msgpack_buffer(buffer);
-        EXPECT_TRUE(SumcheckClientIVC::verify(proof_deserialized, vk));
+        auto proof_deserialized = ClientIVC::Proof::from_msgpack_buffer(buffer);
+        EXPECT_TRUE(ClientIVC::verify(proof_deserialized, vk));
 
         std::vector<uint8_t> random_bytes(buffer.size());
         std::generate(random_bytes.begin(), random_bytes.end(), []() { return static_cast<uint8_t>(rand() % 256); });
         std::copy(random_bytes.begin(), random_bytes.end(), buffer.data());
 
         // Expect deserialization to fail with error msgpack::v1::type_error with description "std::bad_cast"
-        EXPECT_THROW(SumcheckClientIVC::Proof::from_msgpack_buffer(buffer), msgpack::v1::type_error);
+        EXPECT_THROW(ClientIVC::Proof::from_msgpack_buffer(buffer), msgpack::v1::type_error);
     }
 };
 
@@ -359,7 +359,7 @@ TEST_F(SumcheckClientIVCTests, DatabusFailure)
 
     PrivateFunctionExecutionMockCircuitProducer circuit_producer{ /*num_app_circuits=*/1 };
     const size_t NUM_CIRCUITS = circuit_producer.total_num_circuits;
-    SumcheckClientIVC ivc{ NUM_CIRCUITS };
+    ClientIVC ivc{ NUM_CIRCUITS };
 
     // Construct and accumulate a series of mocked private function execution circuits
     for (size_t idx = 0; idx < NUM_CIRCUITS; ++idx) {
@@ -374,5 +374,5 @@ TEST_F(SumcheckClientIVCTests, DatabusFailure)
     }
 
     auto proof = ivc.prove();
-    EXPECT_FALSE(SumcheckClientIVC::verify(proof, ivc.get_vk()));
+    EXPECT_FALSE(ClientIVC::verify(proof, ivc.get_vk()));
 };
