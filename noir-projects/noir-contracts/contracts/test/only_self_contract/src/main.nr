@@ -1,5 +1,6 @@
 use aztec::macros::aztec;
 
+/// Contract used to test the #[only_self] attribute restricts the access as expected.
 #[aztec]
 pub contract OnlySelf {
     use aztec::macros::functions::{external, only_self};
@@ -33,7 +34,7 @@ mod test {
     }
 
     #[test(should_fail_with = "Function only_self_private can only be called by the same contract")]
-    unconstrained fn only_self_private_fails_if_called_from_other_contract() {
+    unconstrained fn only_self_private_function_fails_if_called_from_other_contract() {
         let (mut env, caller, instance_address) = setup();
         let instance = OnlySelf::at(instance_address);
 
@@ -43,7 +44,7 @@ mod test {
     }
 
     #[test(should_fail_with = "Function only_self_public can only be called by the same contract")]
-    unconstrained fn only_self_public_fails_if_called_from_other_contract() {
+    unconstrained fn only_self_public_function_fails_if_called_from_other_contract() {
         let (mut env, caller, instance_address) = setup();
         let instance = OnlySelf::at(instance_address);
 
