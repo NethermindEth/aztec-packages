@@ -21,13 +21,8 @@ mod test {
     };
 
     unconstrained fn setup() -> (TestEnvironment, AztecAddress, AztecAddress) {
-        // Setup test environment
         let mut env = TestEnvironment::new();
-
-        // Create an account to call from
         let caller = env.create_light_account();
-
-        // Deploy contract without initialization
         let instance_address = env.deploy("OnlySelf").without_initializer();
 
         (env, caller, instance_address)
@@ -38,8 +33,6 @@ mod test {
         let (mut env, caller, instance_address) = setup();
         let instance = OnlySelf::at(instance_address);
 
-        // This should fail because we're calling from a different address (external call)
-        // The test environment simulates this as coming from a different caller
         env.call_private(caller, instance.only_self_private());
     }
 
@@ -48,7 +41,6 @@ mod test {
         let (mut env, caller, instance_address) = setup();
         let instance = OnlySelf::at(instance_address);
 
-        // This should fail because we're calling from a different address (external call)
         env.call_public(caller, instance.only_self_public());
     }
 }
