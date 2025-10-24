@@ -210,7 +210,9 @@ Aztec contracts now automatically inject a `self` parameter into every contract 
 - `self.context` - The execution context (private, public, or utility)
 - `self.msg_sender()` - Get the address of the caller
 - `self.emit(...)` - Emit events
-- `self.call(...)` - Make contract calls (when available)
+
+And soon to be implemented also:
+- `self.call(...)` - Make contract calls
 
 #### How it works
 
@@ -252,12 +254,21 @@ fn new_transfer(amount: u128, recipient: AztecAddress) {
 
 #### Key changes
 
-1. **Storage access:** Replace `storage` with `self.storage`
+1. **Storage and context access:**
+
+Storage and context are no longer injected into the function as standalone variables and instead you need to access them via `self`:
 
    ```diff
    - let balance = storage.balances.at(owner).read();
    + let balance = self.storage.balances.at(owner).read();
    ```
+
+   ```diff
+   - context.push_nullifier(nullifier);
+   + self.context.push_nullifier(nullifier);
+   ```
+
+Note that `context` is expected to be use only when needing to access a low-level API (like directly emitting a nullifier).
 
 2. **Getting caller address:** Use `self.msg_sender()` instead of `context.msg_sender()`
 
@@ -273,14 +284,7 @@ fn new_transfer(amount: u128, recipient: AztecAddress) {
    + let this_contract = self.address;
    ```
 
-4. **Accessing context:** Use `self.context` when you need direct access to the low-level API. E.g.:
-
-   ```diff
-   - context.push_nullifier(nullifier);
-   + self.context.push_nullifier(nullifier);
-   ```
-
-5. **Emitting events:**
+4. **Emitting events:**
 
    In private functions:
 
@@ -308,6 +312,8 @@ fn withdraw(amount: u128, recipient: AztecAddress) {
     let token = storage.donation_token.get_note().get_address();
 
     // ... withdrawal logic
+
+    emit_event_in_private(Withdraw { withdrawer, amount }, context, withdrawer, MessageDelivery.UNCONSTRAINED_ONCHAIN);
 }
 ```
 
@@ -320,6 +326,8 @@ fn withdraw(amount: u128, recipient: AztecAddress) {
     let token = self.storage.donation_token.get_note().get_address();
 
     // ... withdrawal logic
+
+    self.emit(Withdraw { withdrawer, amount }, withdrawer, MessageDelivery.UNCONSTRAINED_ONCHAIN);
 }
 ```
 
