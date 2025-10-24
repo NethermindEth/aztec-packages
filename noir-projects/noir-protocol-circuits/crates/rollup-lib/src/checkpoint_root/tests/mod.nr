@@ -256,6 +256,12 @@ impl TestBuilder {
             self.right_rollup
         };
 
+        let out_hash = if self.is_single_block {
+            left.out_hash
+        } else {
+            accumulate_out_hash(left.out_hash, right.out_hash)
+        };
+
         let total_mana_used = if self.is_single_block {
             left.accumulated_mana_used
         } else {
@@ -266,6 +272,7 @@ impl TestBuilder {
             last_archive_root: left.previous_archive.root,
             blobs_hash: self.hints.blobs_hash,
             in_hash: left.in_hash,
+            out_hash,
             slot_number: left.constants.slot_number,
             timestamp: right.end_timestamp,
             coinbase: left.constants.coinbase,

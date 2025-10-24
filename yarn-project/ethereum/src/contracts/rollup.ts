@@ -64,6 +64,7 @@ export type ViemHeader = {
   lastArchiveRoot: `0x${string}`;
   blobsHash: `0x${string}`;
   inHash: `0x${string}`;
+  outHash: `0x${string}`;
   slotNumber: bigint;
   timestamp: bigint;
   coinbase: `0x${string}`;

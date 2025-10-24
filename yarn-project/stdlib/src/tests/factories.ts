@@ -833,6 +833,7 @@ export function makeL2BlockHeader(
     makeAppendOnlyTreeSnapshot(seed + 0x100),
     overrides?.blobsHash ?? fr(seed + 0x200),
     overrides?.inHash ?? fr(seed + 0x300),
+    overrides?.outHash ?? fr(seed + 0x400),
     overrides?.state ?? makeStateReference(seed + 0x600),
     makeGlobalVariables((seed += 0x700), {
       ...(blockNumber ? { blockNumber } : {}),
@@ -849,12 +850,13 @@ export function makeCheckpointHeader(seed = 0) {
     lastArchiveRoot: fr(seed + 0x100),
     blobsHash: fr(seed + 0x200),
     inHash: fr(seed + 0x300),
-    slotNumber: new Fr(seed + 0x300),
-    timestamp: BigInt(seed + 0x400),
-    coinbase: makeEthAddress(seed + 0x500),
-    feeRecipient: makeAztecAddress(seed + 0x600),
-    gasFees: makeGasFees(seed + 0x700),
-    totalManaUsed: fr(seed + 0x800),
+    outHash: fr(seed + 0x350),
+    slotNumber: new Fr(seed + 0x400),
+    timestamp: BigInt(seed + 0x500),
+    coinbase: makeEthAddress(seed + 0x600),
+    feeRecipient: makeAztecAddress(seed + 0x700),
+    gasFees: makeGasFees(seed + 0x800),
+    totalManaUsed: fr(seed + 0x900),
   });
 }
 

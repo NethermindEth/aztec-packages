@@ -18,7 +18,11 @@ import { padArrayEnd } from '@aztec/foundation/collection';
 import { sha256ToField, sha256Trunc } from '@aztec/foundation/crypto';
 import { BLS12Point, Fr } from '@aztec/foundation/fields';
 import { type Bufferable, type Tuple, assertLength, toFriendlyJSON } from '@aztec/foundation/serialize';
-import { MembershipWitness, MerkleTreeCalculator } from '@aztec/foundation/trees';
+import {
+  MembershipWitness,
+  MerkleTreeCalculator,
+  computeCompressedUnbalancedMerkleTreeRoot,
+} from '@aztec/foundation/trees';
 import { getVkData } from '@aztec/noir-protocol-circuits-types/server/vks';
 import { getVKIndex, getVKSiblingPath } from '@aztec/noir-protocol-circuits-types/vk-tree';
 import { computeFeePayerBalanceLeafSlot } from '@aztec/protocol-contracts/fee-juice';
@@ -317,7 +321,10 @@ export const buildHeaderAndBodyFromTxs = runInSpan(
     const txEffects = txs.map(tx => tx.txEffect);
     const body = new Body(txEffects);
 
-    const parityShaRoot = await computeInHashFromL1ToL2Messages(l1ToL2Messages);
+    const txOutHashes = txEffects.map(tx => tx.txOutHash());
+    const outHash = new Fr(computeCompressedUnbalancedMerkleTreeRoot(txOutHashes));
+
+    const inHash = await computeInHashFromL1ToL2Messages(l1ToL2Messages);
     const blobFields = body.toBlobFields();
     const blobsHash = getBlobsHashFromBlobs(await Blob.getBlobsPerBlock(blobFields));
 
@@ -331,7 +338,8 @@ export const buildHeaderAndBodyFromTxs = runInSpan(
     const header = new L2BlockHeader(
       previousArchive,
       blobsHash,
-      parityShaRoot,
+      inHash,
+      outHash,
       stateReference,
       globalVariables,
       fees,

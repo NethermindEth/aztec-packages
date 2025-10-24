@@ -53,6 +53,7 @@ export async function makeTXEBlockHeader(
     new AppendOnlyTreeSnapshot(new Fr(archiveInfo.root), Number(archiveInfo.size)),
     Fr.ZERO,
     Fr.ZERO,
+    Fr.ZERO,
     stateReference,
     globalVariables,
     Fr.ZERO,

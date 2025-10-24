@@ -23,6 +23,8 @@ export class CheckpointHeader {
     public blobsHash: Fr,
     /** Root of the l1 to l2 messages subtree. */
     public inHash: Fr,
+    /** Root of the l2 to l1 messages subtree. */
+    public outHash: Fr,
     /** Slot number of the L2 block */
     public slotNumber: Fr,
     /** Timestamp of the L2 block. */
@@ -43,6 +45,7 @@ export class CheckpointHeader {
         lastArchiveRoot: schemas.Fr,
         blobsHash: schemas.Fr,
         inHash: schemas.Fr,
+        outHash: schemas.Fr,
         slotNumber: schemas.Fr,
         timestamp: schemas.BigInt,
         coinbase: schemas.EthAddress,
@@ -58,6 +61,7 @@ export class CheckpointHeader {
       fields.lastArchiveRoot,
       fields.blobsHash,
       fields.inHash,
+      fields.outHash,
       fields.slotNumber,
       fields.timestamp,
       fields.coinbase,
@@ -78,6 +82,7 @@ export class CheckpointHeader {
       reader.readObject(Fr),
       reader.readObject(Fr),
       reader.readObject(Fr),
+      reader.readObject(Fr),
       Fr.fromBuffer(reader),
       reader.readUInt64(),
       reader.readObject(EthAddress),
@@ -92,6 +97,7 @@ export class CheckpointHeader {
       this.lastArchiveRoot.equals(other.lastArchiveRoot) &&
       this.blobsHash.equals(other.blobsHash) &&
       this.inHash.equals(other.inHash) &&
+      this.outHash.equals(other.outHash) &&
       this.slotNumber.equals(other.slotNumber) &&
       this.timestamp === other.timestamp &&
       this.coinbase.equals(other.coinbase) &&
@@ -107,6 +113,7 @@ export class CheckpointHeader {
       this.lastArchiveRoot,
       this.blobsHash,
       this.inHash,
+      this.outHash,
       this.slotNumber,
       bigintToUInt64BE(this.timestamp),
       this.coinbase,
@@ -125,6 +132,7 @@ export class CheckpointHeader {
       lastArchiveRoot: Fr.ZERO,
       blobsHash: Fr.ZERO,
       inHash: Fr.ZERO,
+      outHash: Fr.ZERO,
       slotNumber: Fr.ZERO,
       timestamp: 0n,
       coinbase: EthAddress.ZERO,
@@ -137,6 +145,7 @@ export class CheckpointHeader {
 
   static random(): CheckpointHeader {
     return new CheckpointHeader(
+      Fr.random(),
       Fr.random(),
       Fr.random(),
       Fr.random(),
@@ -154,6 +163,7 @@ export class CheckpointHeader {
       this.lastArchiveRoot.isZero() &&
       this.blobsHash.isZero() &&
       this.inHash.isZero() &&
+      this.outHash.isZero() &&
       this.slotNumber.isZero() &&
       this.timestamp === 0n &&
       this.coinbase.isZero() &&
@@ -180,6 +190,7 @@ export class CheckpointHeader {
       Fr.fromString(header.lastArchiveRoot),
       Fr.fromString(header.blobsHash),
       Fr.fromString(header.inHash),
+      Fr.fromString(header.outHash),
       new Fr(header.slotNumber),
       header.timestamp,
       new EthAddress(hexToBuffer(header.coinbase)),
@@ -194,6 +205,7 @@ export class CheckpointHeader {
       lastArchiveRoot: this.lastArchiveRoot.toString(),
       blobsHash: this.blobsHash.toString(),
       inHash: this.inHash.toString(),
+      outHash: this.outHash.toString(),
       slotNumber: this.slotNumber.toBigInt(),
       timestamp: this.timestamp,
       coinbase: this.coinbase.toString(),
@@ -211,6 +223,7 @@ export class CheckpointHeader {
       lastArchive: this.lastArchiveRoot.toString(),
       blobsHash: this.blobsHash.toString(),
       inHash: this.inHash.toString(),
+      outHash: this.outHash.toString(),
       slotNumber: this.slotNumber.toBigInt(),
       timestamp: this.timestamp,
       coinbase: this.coinbase.toString(),
@@ -226,6 +239,7 @@ export class CheckpointHeader {
   lastArchiveRoot: ${this.lastArchiveRoot.toString()},
   blobsHash: ${inspect(this.blobsHash)},
   inHash: ${inspect(this.inHash)},
+  outHash: ${inspect(this.outHash)},
   slotNumber: ${this.slotNumber.toBigInt()},
   timestamp: ${this.timestamp},
   coinbase: ${this.coinbase.toString()},

@@ -352,6 +352,7 @@ pub global BLOCK_HEADER_LENGTH: u32 = APPEND_ONLY_TREE_SNAPSHOT_LENGTH
 pub global CHECKPOINT_HEADER_LENGTH: u32 = 1 /* last_archive_root */
     + 1 /* blobs_hash */
     + 1 /* in_hash */
+    + 1 /* out_hash */
     + 1 /* slot_number */
     + 1 /* timestamp */
     + 1 /* coinbase */

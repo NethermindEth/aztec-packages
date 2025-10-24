@@ -12,6 +12,7 @@ pub struct CheckpointHeader {
     pub last_archive_root: Field,
     pub blobs_hash: Field,
     pub in_hash: Field,
+    pub out_hash: Field,
     pub slot_number: Field,
     // The timestamp of the slot. All blocks in the checkpoint must have a timestamp less than or equal to this value.
     pub timestamp: u64,
@@ -27,6 +28,7 @@ impl Empty for CheckpointHeader {
             last_archive_root: 0,
             blobs_hash: 0,
             in_hash: 0,
+            out_hash: 0,
             slot_number: 0,
             timestamp: 0,
             coinbase: EthAddress::zero(),
@@ -44,6 +46,7 @@ impl CheckpointHeader {
         let last_archive_root_bytes: [u8; 32] = self.last_archive_root.to_be_bytes();
         let blobs_hash_bytes: [u8; 32] = self.blobs_hash.to_be_bytes();
         let in_hash_bytes: [u8; 32] = self.in_hash.to_be_bytes();
+        let out_hash_bytes: [u8; 32] = self.out_hash.to_be_bytes();
         let slot_number_bytes: [u8; 32] = self.slot_number.to_be_bytes();
         let coinbase_bytes: [u8; 20] = self.coinbase.to_be_bytes();
         let fee_recipient_bytes: [u8; 32] = self.fee_recipient.to_field().to_be_bytes();
@@ -57,30 +60,31 @@ impl CheckpointHeader {
             bytes[i] = last_archive_root_bytes[i];
             bytes[i + 32] = blobs_hash_bytes[i];
             bytes[i + 64] = in_hash_bytes[i];
-            bytes[i + 96] = slot_number_bytes[i];
+            bytes[i + 96] = out_hash_bytes[i];
+            bytes[i + 128] = slot_number_bytes[i];
         }
 
         let mut timestamp = self.timestamp;
         for i in 0..8 {
-            bytes[136 - 1 - i] = timestamp as u8;
+            bytes[168 - 1 - i] = timestamp as u8;
             timestamp = timestamp >> 8;
         }
 
         for i in 0..20 {
-            bytes[i + 136] = coinbase_bytes[i];
+            bytes[i + 168] = coinbase_bytes[i];
         }
 
         for i in 0..32 {
-            bytes[i + 156] = fee_recipient_bytes[i];
+            bytes[i + 188] = fee_recipient_bytes[i];
         }
 
         for i in 0..16 {
-            bytes[i + 188] = gas_fees_per_da_gas_bytes[i];
-            bytes[i + 204] = gas_fees_per_l2_gas_bytes[i];
+            bytes[i + 220] = gas_fees_per_da_gas_bytes[i];
+            bytes[i + 236] = gas_fees_per_l2_gas_bytes[i];
         }
 
         for i in 0..32 {
-            bytes[i + 220] = total_mana_used_bytes[i];
+            bytes[i + 252] = total_mana_used_bytes[i];
         }
 
         bytes
@@ -99,6 +103,7 @@ fn serialization_and_hash_match_typescript() {
         last_archive_root: 123123,
         blobs_hash: 886644,
         in_hash: 335577,
+        out_hash: 996633,
         slot_number: 1234,
         timestamp: 5678,
         coinbase: EthAddress::from_field(2244),
@@ -114,6 +119,6 @@ fn serialization_and_hash_match_typescript() {
 
     // Value from `checkpoint_header.test.ts`.
     let checkpoint_header_hash_from_ts =
-        0x007dbd23ddcf53cb119bffded2cd032c4b6b593f66ad8702338aece2ef3fd33a;
+        0x0093db87a514e4d40b8e4644ca4b31e415512e4424bc40c03d621c8e6b74db29;
     assert_eq(header.hash(), checkpoint_header_hash_from_ts);
 }

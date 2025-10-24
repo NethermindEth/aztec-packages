@@ -444,6 +444,7 @@ export class Sequencer extends (EventEmitter as new () => TypedEventEmitter<Sequ
       lastArchiveRoot: chainTipArchive,
       blobsHash: Fr.ZERO,
       inHash: Fr.ZERO,
+      outHash: Fr.ZERO,
       totalManaUsed: Fr.ZERO,
     });
 

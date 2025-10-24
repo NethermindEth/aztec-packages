@@ -91,6 +91,7 @@ impl<let NumBlobs: u32> CheckpointRollupPublicInputsComposer<NumBlobs> {
             last_archive_root: merged_rollup.previous_archive.root,
             blobs_hash: self.blobs_hash,
             in_hash: merged_rollup.in_hash,
+            out_hash: merged_rollup.out_hash,
             slot_number: constants.slot_number,
             timestamp: merged_rollup.end_timestamp,
             coinbase: constants.coinbase,
