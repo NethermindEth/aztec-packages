@@ -19,6 +19,10 @@ class MockContractDB : public ContractDBInterface {
                 (const, override));
     MOCK_METHOD(std::optional<ContractClass>, get_contract_class, (const ContractClassId& class_id), (const, override));
     MOCK_METHOD(FF, get_bytecode_commitment, (const ContractClassId& class_id), (const, override));
+    MOCK_METHOD(std::optional<std::string>,
+                get_debug_function_name,
+                (const AztecAddress& address, const FunctionSelector& selector),
+                (const, override));
     MOCK_METHOD(void, add_non_revertible_contracts, (const ContractDeploymentData& deployment_data), (override));
     MOCK_METHOD(void, add_revertible_contracts, (const ContractDeploymentData& deployment_data), (override));
 };

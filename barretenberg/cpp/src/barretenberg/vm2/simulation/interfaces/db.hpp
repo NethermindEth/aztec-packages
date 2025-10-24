@@ -21,6 +21,8 @@ class ContractDBInterface {
     virtual std::optional<ContractInstance> get_contract_instance(const AztecAddress& address) const = 0;
     virtual std::optional<ContractClass> get_contract_class(const ContractClassId& class_id) const = 0;
     virtual FF get_bytecode_commitment(const ContractClassId& class_id) const = 0;
+    virtual std::optional<std::string> get_debug_function_name(const AztecAddress& address,
+                                                               const FunctionSelector& selector) const = 0;
 
     virtual void add_non_revertible_contracts(const ContractDeploymentData& deployment_data) = 0;
     virtual void add_revertible_contracts(const ContractDeploymentData& deployment_data) = 0;
