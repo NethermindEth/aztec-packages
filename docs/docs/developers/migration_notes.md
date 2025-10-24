@@ -332,7 +332,7 @@ fn withdraw(amount: u128, recipient: AztecAddress) {
 }
 ```
 
-### renaming #[internal] as #[only_self]
+### Renaming #[internal] as #[only_self]
 
 We want for internal to mean the same as in Solidity where internal function can be called only from the same contract
 and is also inlined (EVM JUMP opcode and not EVM CALL). The original implementation of our `#[internal]` macro also
