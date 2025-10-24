@@ -28,6 +28,9 @@ class HintedRawContractDB final : public ContractDBInterface {
     std::optional<ContractInstance> get_contract_instance(const AztecAddress& address) const override;
     std::optional<ContractClass> get_contract_class(const ContractClassId& class_id) const override;
 
+    void add_non_revertible_contracts(const ContractDeploymentData& deployment_data) override;
+    void add_revertible_contracts(const ContractDeploymentData& deployment_data) override;
+
   private:
     FF get_bytecode_commitment(const ContractClassId& class_id) const;
 

@@ -39,6 +39,16 @@ std::optional<ContractClass> ContractDB::get_contract_class(const ContractClassI
     return klass;
 }
 
+void ContractDB::add_non_revertible_contracts(const ContractDeploymentData& deployment_data)
+{
+    raw_contract_db.add_non_revertible_contracts(deployment_data);
+}
+
+void ContractDB::add_revertible_contracts(const ContractDeploymentData& deployment_data)
+{
+    raw_contract_db.add_revertible_contracts(deployment_data);
+}
+
 // Merkle DB starts.
 
 TreeStates MerkleDB::get_tree_state() const
