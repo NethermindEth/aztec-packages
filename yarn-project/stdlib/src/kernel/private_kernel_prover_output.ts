@@ -5,7 +5,7 @@ import { serializeWitness } from '@aztec/noir-noirc_abi';
 import { Encoder } from 'msgpackr';
 import { z } from 'zod';
 
-import type { ClientIvcProof } from '../proofs/client_ivc_proof.js';
+import type { ClientIvcProofWithoutPublicInputs } from '../proofs/client_ivc_proof.js';
 import type { PrivateKernelCircuitPublicInputs } from './private_kernel_circuit_public_inputs.js';
 import type { PrivateKernelTailCircuitPublicInputs } from './private_kernel_tail_circuit_public_inputs.js';
 
@@ -46,7 +46,7 @@ export interface PrivateKernelExecutionProofOutput<
   publicInputs: PublicInputsType;
   /** The private IVC proof optimized for user devices. It will be consumed by an Aztec prover,
    * which recursively verifies it through the "private tx base" or the "public tube" circuit.*/
-  clientIvcProof: ClientIvcProof;
+  clientIvcProof: ClientIvcProofWithoutPublicInputs;
   /**
    * The trace the clientIvcProof corresponds to.
    * A trace of app circuits interleaved with private kernel circuits.

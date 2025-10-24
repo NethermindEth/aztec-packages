@@ -15,7 +15,7 @@ import { PrivateKernelTailCircuitPublicInputs } from '../kernel/private_kernel_t
 import { ContractClassLog, ContractClassLogFields } from '../logs/contract_class_log.js';
 import { Gossipable } from '../p2p/gossipable.js';
 import { TopicType } from '../p2p/topic_type.js';
-import { ClientIvcProof } from '../proofs/client_ivc_proof.js';
+import { ClientIvcProofWithoutPublicInputs } from '../proofs/client_ivc_proof.js';
 import type { TxStats } from '../stats/stats.js';
 import { HashedValues } from './hashed_values.js';
 import { PublicCallRequestWithCalldata } from './public_call_request_with_calldata.js';
@@ -39,7 +39,7 @@ export class Tx extends Gossipable {
     /**
      * Proof from the private kernel circuit.
      */
-    public readonly clientIvcProof: ClientIvcProof,
+    public readonly clientIvcProof: ClientIvcProofWithoutPublicInputs,
     /**
      * Contract class log fields emitted from the tx.
      * Their order should match the order of the log hashes returned from `this.data.getNonEmptyContractClassLogsHashes`.
@@ -108,7 +108,7 @@ export class Tx extends Gossipable {
     return new Tx(
       reader.readObject(TxHash),
       reader.readObject(PrivateKernelTailCircuitPublicInputs),
-      reader.readObject(ClientIvcProof),
+      reader.readObject(ClientIvcProofWithoutPublicInputs),
       reader.readVectorUint8Prefix(ContractClassLogFields),
       reader.readVectorUint8Prefix(HashedValues),
     );
@@ -132,7 +132,7 @@ export class Tx extends Gossipable {
     return z
       .object({
         data: PrivateKernelTailCircuitPublicInputs.schema,
-        clientIvcProof: ClientIvcProof.schema,
+        clientIvcProof: ClientIvcProofWithoutPublicInputs.schema,
         contractClassLogFields: z.array(ContractClassLogFields.schema),
         publicFunctionCalldata: z.array(HashedValues.schema),
       })
@@ -237,7 +237,7 @@ export class Tx extends Gossipable {
       classPublishedCount: this.data.getNonEmptyContractClassLogsHashes().length,
       contractClassLogSize: this.data.getEmittedContractClassLogsLength(),
 
-      proofSize: this.clientIvcProof.proof.length,
+      proofSize: this.clientIvcProof.proofWithoutPublicInputs.length,
       size: this.toBuffer().length,
 
       feePaymentMethod:
@@ -249,7 +249,7 @@ export class Tx extends Gossipable {
   getSize() {
     return (
       this.data.getSize() +
-      this.clientIvcProof.proof.length * Fr.SIZE_IN_BYTES +
+      this.clientIvcProof.proofWithoutPublicInputs.length * Fr.SIZE_IN_BYTES +
       arraySerializedSizeOfNonEmpty(this.contractClassLogFields) +
       this.publicFunctionCalldata.reduce((accum, cd) => accum + cd.getSize(), 0)
     );
@@ -275,7 +275,7 @@ export class Tx extends Gossipable {
    */
   static clone(tx: Tx): Tx {
     const publicInputs = PrivateKernelTailCircuitPublicInputs.fromBuffer(tx.data.toBuffer());
-    const clientIvcProof = ClientIvcProof.fromBuffer(tx.clientIvcProof.toBuffer());
+    const clientIvcProof = ClientIvcProofWithoutPublicInputs.fromBuffer(tx.clientIvcProof.toBuffer());
     const contractClassLogFields = tx.contractClassLogFields.map(p => p.clone());
     const publicFunctionCalldata = tx.publicFunctionCalldata.map(cd => HashedValues.fromBuffer(cd.toBuffer()));
     const clonedTx = new Tx(tx.txHash, publicInputs, clientIvcProof, contractClassLogFields, publicFunctionCalldata);
@@ -292,7 +292,9 @@ export class Tx extends Gossipable {
     return Tx.from({
       txHash: (typeof args.txHash === 'string' ? TxHash.fromString(args.txHash) : args.txHash) ?? TxHash.random(),
       data: PrivateKernelTailCircuitPublicInputs.emptyWithNullifier(),
-      clientIvcProof: args.randomProof ? ClientIvcProof.random() : ClientIvcProof.empty(),
+      clientIvcProof: args.randomProof
+        ? ClientIvcProofWithoutPublicInputs.random()
+        : ClientIvcProofWithoutPublicInputs.empty(),
       contractClassLogFields: [ContractClassLogFields.random()],
       publicFunctionCalldata: [HashedValues.random()],
     });

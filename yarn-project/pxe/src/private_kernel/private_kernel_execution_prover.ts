@@ -23,7 +23,7 @@ import {
   type PrivateKernelTailCircuitPublicInputs,
   PrivateVerificationKeyHints,
 } from '@aztec/stdlib/kernel';
-import { ClientIvcProof } from '@aztec/stdlib/proofs';
+import { ClientIvcProofWithoutPublicInputs } from '@aztec/stdlib/proofs';
 import {
   type PrivateCallExecutionResult,
   type PrivateExecutionResult,
@@ -347,15 +347,15 @@ export class PrivateKernelExecutionProver {
       this.log.info(`Private kernel witness generation took ${timer.ms()}ms`);
     }
 
-    let clientIvcProof: ClientIvcProof;
+    let clientIvcProof: ClientIvcProofWithoutPublicInputs;
     // TODO(#7368) how do we 'bincode' encode these inputs?
     let provingTime;
     if (!skipProofGeneration) {
       const provingTimer = new Timer();
-      clientIvcProof = await this.proofCreator.createClientIvcProof(executionSteps);
+      clientIvcProof = (await this.proofCreator.createClientIvcProof(executionSteps)).removePublicInputs();
       provingTime = provingTimer.ms();
     } else {
-      clientIvcProof = ClientIvcProof.random();
+      clientIvcProof = ClientIvcProofWithoutPublicInputs.random();
     }
 
     return {
