@@ -35,6 +35,8 @@ class ContractDB final : public ContractDBInterface {
     // This does NOT prove that the class id is in the nullifier tree.
     // Silo the class id and use the MerkleDB to prove that.
     std::optional<ContractClass> get_contract_class(const ContractClassId& class_id) const override;
+    // Gets the bytecode commitment for a contract class ID.
+    FF get_bytecode_commitment(const ContractClassId& class_id) const override;
 
     // Adds non-revertible contracts to the DB.
     void add_non_revertible_contracts(const ContractDeploymentData& deployment_data) override;

@@ -139,8 +139,6 @@ std::optional<ContractClass> HintedRawContractDB::get_contract_class(const Contr
     return std::make_optional<ContractClass>({
         .artifact_hash = contract_class_hint.artifactHash,
         .private_function_root = contract_class_hint.privateFunctionsRoot,
-        // We choose to embed the bytecode commitment in the contract class.
-        .public_bytecode_commitment = get_bytecode_commitment(class_id),
         .packed_bytecode = contract_class_hint.packedBytecode,
     });
 }

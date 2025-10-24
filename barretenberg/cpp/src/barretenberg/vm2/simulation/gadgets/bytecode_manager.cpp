@@ -72,7 +72,7 @@ BytecodeId TxBytecodeManager::get_bytecode(const AztecAddress& address)
     debug("Bytecode for ", address, " successfully retrieved!");
 
     // Bytecode hashing and decomposition, deduplicated by bytecode_id (commitment)
-    BytecodeId bytecode_id = klass.public_bytecode_commitment;
+    BytecodeId bytecode_id = contract_db.get_bytecode_commitment(current_class_id);
     retrieval_event.bytecode_id = bytecode_id;
 
     // Check if we've already processed this bytecode. If so, don't do hashing and decomposition again!
@@ -84,7 +84,7 @@ BytecodeId TxBytecodeManager::get_bytecode(const AztecAddress& address)
 
     // First time seeing this bytecode - check hashing and decomposition
     bytecode_hasher.assert_public_bytecode_commitment(
-        bytecode_id, klass.packed_bytecode, klass.public_bytecode_commitment);
+        bytecode_id, klass.packed_bytecode, /*public_bytecode_commitment=*/bytecode_id);
 
     // We convert the bytecode to a shared_ptr because it will be shared by some events.
     auto shared_bytecode = std::make_shared<std::vector<uint8_t>>(std::move(klass.packed_bytecode));

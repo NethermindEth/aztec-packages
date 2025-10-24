@@ -35,8 +35,14 @@ std::optional<ContractClass> ContractDB::get_contract_class(const ContractClassI
         return std::nullopt;
     }
     // If we did get a contract class, we need to prove that the class_id is derived from the class.
-    class_id_derivation.assert_derivation(class_id, klass.value());
+    FF bytecode_commitment = raw_contract_db.get_bytecode_commitment(class_id);
+    class_id_derivation.assert_derivation(klass->with_commitment(bytecode_commitment));
     return klass;
+}
+
+FF ContractDB::get_bytecode_commitment(const ContractClassId& class_id) const
+{
+    return raw_contract_db.get_bytecode_commitment(class_id);
 }
 
 void ContractDB::add_non_revertible_contracts(const ContractDeploymentData& deployment_data)

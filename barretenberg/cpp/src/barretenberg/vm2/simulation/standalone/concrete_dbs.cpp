@@ -18,6 +18,11 @@ std::optional<ContractClass> PureContractDB::get_contract_class(const ContractCl
     return raw_contract_db.get_contract_class(class_id);
 }
 
+FF PureContractDB::get_bytecode_commitment(const ContractClassId& class_id) const
+{
+    return raw_contract_db.get_bytecode_commitment(class_id);
+}
+
 void PureContractDB::add_non_revertible_contracts(const ContractDeploymentData& deployment_data)
 {
     raw_contract_db.add_non_revertible_contracts(deployment_data);

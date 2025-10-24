@@ -70,7 +70,7 @@ BytecodeId PureTxBytecodeManager::get_bytecode(const AztecAddress& address)
     debug("Bytecode for ", address, " successfully retrieved!");
 
     // Bytecode hashing and decomposition, deduplicated by bytecode_id (commitment)
-    BytecodeId bytecode_id = klass.public_bytecode_commitment;
+    BytecodeId bytecode_id = contract_db.get_bytecode_commitment(current_class_id);
 
     // Check if we've already processed this bytecode.
     if (bytecodes.contains(bytecode_id)) {

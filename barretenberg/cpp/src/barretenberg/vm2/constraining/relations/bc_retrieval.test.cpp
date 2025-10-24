@@ -70,9 +70,9 @@ TEST(BytecodeRetrievalConstrainingTest, SuccessfulRetrieval)
     std::vector<FF> bytecode_fields = simulation::encode_bytecode(klass.packed_bytecode);
     std::vector<FF> hash_input = { GENERATOR_INDEX__PUBLIC_BYTECODE };
     hash_input.insert(hash_input.end(), bytecode_fields.begin(), bytecode_fields.end());
-    // random_contract_class() assigns a random FF as the commitment, so we overwrite to ensure the below passes:
-    klass.public_bytecode_commitment = RawPoseidon2::hash(hash_input);
-    builder.process_hashing({ { .bytecode_id = klass.public_bytecode_commitment,
+    // Compute the bytecode commitment separately
+    FF bytecode_commitment = RawPoseidon2::hash(hash_input);
+    builder.process_hashing({ { .bytecode_id = bytecode_commitment,
                                 .bytecode_length = bytecode_size,
                                 .bytecode_fields = bytecode_fields } },
                             trace);
@@ -84,7 +84,14 @@ TEST(BytecodeRetrievalConstrainingTest, SuccessfulRetrieval)
                                                     .exists = true,
                                                 } },
                                                 trace);
-    class_id_builder.process({ { .class_id = instance.current_class_id, .klass = klass } }, trace);
+    ContractClassWithCommitment klass_with_commitment = {
+        .id = instance.current_class_id,
+        .artifact_hash = klass.artifact_hash,
+        .private_functions_root = klass.private_function_root,
+        .packed_bytecode = klass.packed_bytecode,
+        .public_bytecode_commitment = bytecode_commitment,
+    };
+    class_id_builder.process({ { .klass = klass_with_commitment } }, trace);
 
     AppendOnlyTreeSnapshot snapshot_before = AppendOnlyTreeSnapshot{
         .root = FF(AVM_RETRIEVED_BYTECODES_TREE_INITIAL_ROOT),
@@ -121,7 +128,7 @@ TEST(BytecodeRetrievalConstrainingTest, SuccessfulRetrieval)
 
     // Build a bytecode retrieval event where instance exists
     builder.process_retrieval({ {
-                                  .bytecode_id = klass.public_bytecode_commitment, // bytecode_id equals commitment
+                                  .bytecode_id = bytecode_commitment, // bytecode_id equals commitment
                                   .address = instance.deployer_addr,
                                   .current_class_id = instance.current_class_id,
                                   .contract_class = klass,

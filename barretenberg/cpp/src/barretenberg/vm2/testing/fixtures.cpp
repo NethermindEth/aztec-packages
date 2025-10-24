@@ -176,7 +176,6 @@ ContractClass random_contract_class(size_t bytecode_size)
 {
     return ContractClass{ .artifact_hash = FF::random_element(),
                           .private_function_root = FF::random_element(),
-                          .public_bytecode_commitment = FF::random_element(),
                           .packed_bytecode = random_bytes(bytecode_size) };
 }
 

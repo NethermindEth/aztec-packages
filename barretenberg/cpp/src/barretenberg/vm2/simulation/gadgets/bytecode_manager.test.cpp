@@ -74,6 +74,7 @@ TEST_F(BytecodeManagerTest, RetrievalAndDeduplication)
     AztecAddress address1 = AztecAddress::random_element();
     ContractInstance instance1 = testing::random_contract_instance();
     ContractClass klass = testing::random_contract_class();
+    FF bytecode_commitment = FF::random_element();
 
     // Expected interactions for first retrieval
 
@@ -87,33 +88,35 @@ TEST_F(BytecodeManagerTest, RetrievalAndDeduplication)
 
     EXPECT_CALL(contract_db, get_contract_class(instance1.current_class_id))
         .WillOnce(Return(std::make_optional(klass)));
+    EXPECT_CALL(contract_db, get_bytecode_commitment(instance1.current_class_id))
+        .WillRepeatedly(Return(bytecode_commitment));
 
     // Let the real bytecode hasher run - it will emit hashing events
-    EXPECT_CALL(poseidon2, hash(_)).WillOnce(Return(klass.public_bytecode_commitment));
+    EXPECT_CALL(poseidon2, hash(_)).WillOnce(Return(bytecode_commitment));
 
     TreeStates tree_states = {};
     EXPECT_CALL(merkle_db, get_tree_state()).WillOnce(Return(tree_states));
 
     // Base case: First retrieval - should do full processing
     BytecodeId result1 = tx_bytecode_manager.get_bytecode(address1);
-    EXPECT_EQ(result1, klass.public_bytecode_commitment);
+    EXPECT_EQ(result1, bytecode_commitment);
 
     // Verify events after first retrieval
     // Verify retrieval events - should have exactly one retrieval event total
     auto retrieval_events_dump = retrieval_events.dump_events();
     EXPECT_THAT(retrieval_events_dump, SizeIs(1));
     EXPECT_EQ(retrieval_events_dump[0].address, address1);
-    EXPECT_EQ(retrieval_events_dump[0].bytecode_id, klass.public_bytecode_commitment);
+    EXPECT_EQ(retrieval_events_dump[0].bytecode_id, bytecode_commitment);
     EXPECT_FALSE(retrieval_events_dump[0].instance_not_found_error);
     EXPECT_FALSE(retrieval_events_dump[0].limit_error);
     // Verify hashing events - should have exactly one hashing event total
     auto hashing_events_dump = hashing_events.dump_events();
     EXPECT_THAT(hashing_events_dump, SizeIs(1));
-    EXPECT_EQ(hashing_events_dump[0].bytecode_id, klass.public_bytecode_commitment);
+    EXPECT_EQ(hashing_events_dump[0].bytecode_id, bytecode_commitment);
     // Verify decomposition events - should have exactly one decomposition event total
     auto decomposition_events_dump = decomposition_events.dump_events();
     EXPECT_THAT(decomposition_events_dump, SizeIs(1));
-    EXPECT_EQ(decomposition_events_dump[0].bytecode_id, klass.public_bytecode_commitment);
+    EXPECT_EQ(decomposition_events_dump[0].bytecode_id, bytecode_commitment);
 
     // Deduplication case 1: Same address retrieval
     // Expected interactions for second retrieval of same address
@@ -131,13 +134,13 @@ TEST_F(BytecodeManagerTest, RetrievalAndDeduplication)
 
     // Second retrieval of same address - should be deduplicated
     BytecodeId result2 = tx_bytecode_manager.get_bytecode(address1);
-    EXPECT_EQ(result2, klass.public_bytecode_commitment);
+    EXPECT_EQ(result2, bytecode_commitment);
 
     // Verify events after second retrieval - retrieval event emitted, but no hashing or decomposition
     retrieval_events_dump = retrieval_events.dump_events();
     EXPECT_THAT(retrieval_events_dump, SizeIs(1));
     EXPECT_EQ(retrieval_events_dump[0].address, address1);
-    EXPECT_EQ(retrieval_events_dump[0].bytecode_id, klass.public_bytecode_commitment);
+    EXPECT_EQ(retrieval_events_dump[0].bytecode_id, bytecode_commitment);
     hashing_events_dump = hashing_events.dump_events();
     EXPECT_THAT(hashing_events_dump, SizeIs(0)); // No hashing for deduplicated bytecode
     decomposition_events_dump = decomposition_events.dump_events();
@@ -163,13 +166,13 @@ TEST_F(BytecodeManagerTest, RetrievalAndDeduplication)
 
     // Third retrieval with different address but same bytecode - should be deduplicated
     BytecodeId result3 = tx_bytecode_manager.get_bytecode(address2);
-    EXPECT_EQ(result3, klass.public_bytecode_commitment);
+    EXPECT_EQ(result3, bytecode_commitment);
 
     // Verify events after third retrieval - retrieval event emitted, but no hashing or decomposition
     retrieval_events_dump = retrieval_events.dump_events();
     EXPECT_THAT(retrieval_events_dump, SizeIs(1));
     EXPECT_EQ(retrieval_events_dump[0].address, address2);
-    EXPECT_EQ(retrieval_events_dump[0].bytecode_id, klass.public_bytecode_commitment);
+    EXPECT_EQ(retrieval_events_dump[0].bytecode_id, bytecode_commitment);
     hashing_events_dump = hashing_events.dump_events();
     EXPECT_THAT(hashing_events_dump, SizeIs(0)); // No hashing for deduplicated bytecode
     decomposition_events_dump = decomposition_events.dump_events();
