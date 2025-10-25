@@ -1,11 +1,6 @@
 # Disk-based logging system with synchronous SSH transfer to bastion.
 # Logs are written to /logs-disk on bastion via SCP.
 
-# Bastion disk configuration
-export DISK_LOGS_BASTION_HOST="ci-bastion.aztecprotocol.com"
-export DISK_LOGS_BASTION_PATH="/logs-disk"
-DISK_LOGS_SSH_CONFIG="${ci3}/aws/build_instance_ssh_config"
-
 # Initialize disk logging (called on source)
 function init_disk_logs {
   # Only enable in CI environment
@@ -22,15 +17,14 @@ function init_disk_logs {
 function disk_log_transfer {
   local key="$1"
   local local_file="$2"
-  local remote_path="${DISK_LOGS_BASTION_PATH}/${key}.log.gz"
 
   # Transfer via SCP using existing SSH multiplexing (runs in background)
-  scp -F "${DISK_LOGS_SSH_CONFIG}" \
+  scp -F "${ci3}/aws/build_instance_ssh_config" \
       -o ControlMaster=auto \
       -o ControlPath=/tmp/ssh_mux_%h_%p_%r \
       -o ConnectTimeout=5 \
       "${local_file}" \
-      "${DISK_LOGS_BASTION_HOST}:${remote_path}" &>/dev/null &
+      "ci-bastion.aztecprotocol.com:/logs-disk/${key}.log.gz" &>/dev/null &
 }
 
 # Initialize on source
