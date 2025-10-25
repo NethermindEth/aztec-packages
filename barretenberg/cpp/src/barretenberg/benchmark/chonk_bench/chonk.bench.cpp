@@ -34,7 +34,7 @@ BENCHMARK_DEFINE_F(ChonkBench, VerificationOnly)(benchmark::State& state)
 {
     size_t NUM_APP_CIRCUITS = 1;
     auto precomputed_vks = precompute_vks(NUM_APP_CIRCUITS);
-    auto [proof, vk] = accumulate_and_prove_ivc_with_precomputed_vks(NUM_APP_CIRCUITS, precomputed_vks);
+    auto [proof, vk] = accumulate_and_prove_with_precomputed_vks(NUM_APP_CIRCUITS, precomputed_vks);
 
     for (auto _ : state) {
         benchmark::DoNotOptimize(SumcheckChonk::verify(proof, vk));
@@ -51,7 +51,7 @@ BENCHMARK_DEFINE_F(ChonkBench, Full)(benchmark::State& state)
 
     for (auto _ : state) {
         GOOGLE_BB_BENCH_REPORTER(state);
-        accumulate_and_prove_ivc_with_precomputed_vks(NUM_APP_CIRCUITS, precomputed_vks);
+        accumulate_and_prove_with_precomputed_vks(NUM_APP_CIRCUITS, precomputed_vks);
     }
 }
 

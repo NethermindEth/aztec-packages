@@ -780,7 +780,7 @@ void handle_blackbox_func_call(Acir::Opcode::BlackBoxFuncCall const& arg, AcirFo
                     af.avm_recursion_constraints.push_back(c);
                     af.original_opcode_indices.avm_recursion_constraints.push_back(opcode_index);
                     break;
-                case Chonk:
+                case CHONK:
                     af.chonk_recursion_constraints.push_back(c);
                     af.original_opcode_indices.chonk_recursion_constraints.push_back(opcode_index);
                     break;
