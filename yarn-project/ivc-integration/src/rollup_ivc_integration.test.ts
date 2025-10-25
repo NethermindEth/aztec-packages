@@ -72,8 +72,8 @@ describe('Rollup IVC Integration (suite wrapper)', () => {
         'bb',
       );
 
-      // Create a client IVC proof
-      const chonkWorkingDirectory = await getWorkingDirectory('bb-rollup-ivc-integration-client-ivc-');
+      // Create a chonk proof
+      const chonkWorkingDirectory = await getWorkingDirectory('bb-rollup-ivc-integration-chonk-');
       const [bytecodes, witnessStack, tailPublicInputs, vks] = await generateTestingIVCStack(1, 0);
       chonkPublicInputs = tailPublicInputs;
 

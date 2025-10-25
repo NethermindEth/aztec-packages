@@ -129,7 +129,7 @@ export class BBCircuitVerifier implements ClientProtocolCircuitVerifier {
           circuitName: mapProtocolArtifactNameToCircuitName(circuit),
           duration: result.durationMs,
           eventName: 'circuit-verification',
-          proofType: 'client-ivc',
+          proofType: 'chonk',
         } satisfies CircuitVerificationStats);
       };
       await runInDirectory(this.config.bbWorkingDirectory, operation, this.config.bbSkipCleanup, this.logger);

@@ -87,7 +87,7 @@ describe('AVM Integration', () => {
   let simTester: PublicTxSimulationTester;
 
   beforeAll(async () => {
-    const chonkProofPath = await getWorkingDirectory('bb-avm-integration-client-ivc-');
+    const chonkProofPath = await getWorkingDirectory('bb-avm-integration-chonk-');
     bbBinaryPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../barretenberg/cpp/build/bin', 'bb');
     const [bytecodes, witnessStack, tailPublicInputs, vks] = await generateTestingIVCStack(1, 0);
     chonkPublicInputs = tailPublicInputs;

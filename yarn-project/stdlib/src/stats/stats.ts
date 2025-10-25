@@ -181,8 +181,8 @@ export type CircuitVerificationStats = {
   eventName: 'circuit-verification';
   /** Name of the circuit. */
   circuitName: CircuitName;
-  /** Type of proof (client-ivc, honk, etc) */
-  proofType: 'client-ivc' | 'ultra-honk';
+  /** Type of proof (chonk, honk, etc) */
+  proofType: 'chonk' | 'ultra-honk';
   /** Duration in ms. */
   duration: number;
 };

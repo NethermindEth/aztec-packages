@@ -362,7 +362,7 @@ export class PXE {
    * @param proofCreator - The proof creator to use for proving the execution.
    * @param privateExecutionResult - The result of the private execution
    * @param config - The configuration for the kernel execution prover.
-   * @returns An object that contains the output of the kernel execution, including the ClientIvcProof if proving is enabled.
+   * @returns An object that contains the output of the kernel execution, including the ChonkProof if proving is enabled.
    */
   async #prove(
     txExecutionRequest: TxExecutionRequest,

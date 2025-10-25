@@ -5,7 +5,7 @@
 # Example: ./bench_hardware_concurrency.sh 1 2 4 8 16 32
 #
 # To run on a remote machine with ci.sh shell-new:
-#   ./ci.sh shell-new "./ci3/cache_download bb-client-ivc-captures-ba1369853ed8670e.tar.gz ; \
+#   ./ci.sh shell-new "./ci3/cache_download bb-chonk-captures-ba1369853ed8670e.tar.gz ; \
 #                      mv example-app-ivc-inputs-out yarn-project/end-to-end 2>/dev/null ; \
 #                      DENOISE=1 DISABLE_AZTEC_VM=1 ./barretenberg/cpp/bootstrap.sh build_native ; \
 #                      DENOISE=1 ./barretenberg/cpp/scripts/bench_hardware_concurrency.sh"

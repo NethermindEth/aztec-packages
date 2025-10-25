@@ -587,7 +587,7 @@ export class BBNativeRollupProver implements ServerCircuitProver {
     convertInput: (input: CircuitInputType) => WitnessMap,
     convertOutput: (outputWitness: WitnessMap) => CircuitOutputType,
   ): Promise<{ circuitOutput: CircuitOutputType; proof: RecursiveProof<PROOF_LENGTH> }> {
-    // this probably is gonna need to call client ivc
+    // this probably is gonna need to call chonk
     const operation = async (bbWorkingDirectory: string) => {
       const { provingResult, circuitOutput: output } = await this.generateProofWithBB(
         input,
