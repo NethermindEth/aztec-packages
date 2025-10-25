@@ -747,7 +747,7 @@ export class ProvingOrchestrator implements EpochProver {
     };
 
     if (this.provingState?.cachedChonkVerifierProofs.has(txHash)) {
-      logger.debug(`Tube proof already enqueued for tx index: ${txIndex}`, { txHash });
+      logger.debug(`Chonk verifier proof already enqueued for tx index: ${txIndex}`, { txHash });
       void this.provingState!.cachedChonkVerifierProofs.get(txHash)!.then(handleResult);
       return;
     }
