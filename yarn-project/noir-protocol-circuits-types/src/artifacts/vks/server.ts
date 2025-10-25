@@ -25,7 +25,7 @@ import {
 } from '@aztec/constants';
 import { VerificationKeyData } from '@aztec/stdlib/vks';
 
-import PublicTube from '../../../artifacts/chonk_verifier_public.json' with { type: 'json' };
+import PublicChonkVerifier from '../../../artifacts/chonk_verifier_public.json' with { type: 'json' };
 import ParityBase from '../../../artifacts/parity_base.json' with { type: 'json' };
 import ParityRoot from '../../../artifacts/parity_root.json' with { type: 'json' };
 import BlockMergeRollup from '../../../artifacts/rollup_block_merge.json' with { type: 'json' };
@@ -49,7 +49,7 @@ import type { ProtocolCircuitName, ServerProtocolCircuitName } from '../types.js
 export const ServerCircuitVks: Record<ServerProtocolCircuitName, VerificationKeyData> = {
   ParityBaseArtifact: abiToVKData(ParityBase),
   ParityRootArtifact: abiToVKData(ParityRoot),
-  PublicTube: abiToVKData(PublicTube),
+  PublicChonkVerifier: abiToVKData(PublicChonkVerifier),
   PrivateTxBaseRollupArtifact: abiToVKData(PrivateTxBaseRollup),
   PublicTxBaseRollupArtifact: abiToVKData(PublicTxBaseRollup),
   TxMergeRollupArtifact: abiToVKData(TxMergeRollup),
@@ -73,7 +73,7 @@ export const ProtocolCircuitVkIndexes: Record<ProtocolCircuitName, number> = {
   PrivateKernelTailToPublicArtifact: PRIVATE_KERNEL_TAIL_TO_PUBLIC_INDEX,
   HidingKernelToRollup: HIDING_KERNEL_TO_ROLLUP_VK_INDEX,
   HidingKernelToPublic: HIDING_KERNEL_TO_PUBLIC_VK_INDEX,
-  PublicTube: PUBLIC_CHONK_VERIFIER_VK_INDEX,
+  PublicChonkVerifier: PUBLIC_CHONK_VERIFIER_VK_INDEX,
   ParityBaseArtifact: PARITY_BASE_VK_INDEX,
   ParityRootArtifact: PARITY_ROOT_VK_INDEX,
   PrivateTxBaseRollupArtifact: PRIVATE_TX_BASE_ROLLUP_VK_INDEX,

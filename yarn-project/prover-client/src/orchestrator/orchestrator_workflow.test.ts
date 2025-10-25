@@ -145,8 +145,8 @@ describe('prover/orchestrator', () => {
         expect(result.proof).toBeDefined();
       });
 
-      it('can start tube proofs before adding processed txs', async () => {
-        const getTubeSpy = jest.spyOn(prover, 'getPublicChonkVerifierProof');
+      it('can start chonk verifier proofs before adding processed txs', async () => {
+        const getChonkVerifierSpy = jest.spyOn(prover, 'getPublicChonkVerifierProof');
         const { txs: processedTxs } = await context.makePendingBlock(2);
         const {
           blobFieldsLengths: [blobFieldsLength],
@@ -172,18 +172,18 @@ describe('prover/orchestrator', () => {
             publicFunctionCalldata: [],
           }),
         );
-        await orchestrator.startTubeCircuits(txs);
+        await orchestrator.startChonkVerifierCircuits(txs);
 
         await sleep(100);
-        expect(getTubeSpy).toHaveBeenCalledTimes(2);
-        getTubeSpy.mockReset();
+        expect(getChonkVerifierSpy).toHaveBeenCalledTimes(2);
+        getChonkVerifierSpy.mockReset();
 
         await orchestrator.startNewBlock(context.blockNumber, context.globalVariables.timestamp, processedTxs.length);
         await orchestrator.addTxs(processedTxs);
         await orchestrator.setBlockCompleted(context.blockNumber);
         const result = await orchestrator.finalizeEpoch();
         expect(result.proof).toBeDefined();
-        expect(getTubeSpy).toHaveBeenCalledTimes(0);
+        expect(getChonkVerifierSpy).toHaveBeenCalledTimes(0);
       });
 
       it('can add checkpoints in arbitrary order', async () => {

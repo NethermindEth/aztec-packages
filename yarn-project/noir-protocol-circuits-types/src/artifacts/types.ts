@@ -17,7 +17,7 @@ export type ClientProtocolArtifact =
 export type ServerProtocolArtifact =
   | 'ParityBaseArtifact'
   | 'ParityRootArtifact'
-  | 'PublicTube'
+  | 'PublicChonkVerifier'
   | 'PrivateTxBaseRollupArtifact'
   | 'PublicTxBaseRollupArtifact'
   | 'TxMergeRollupArtifact'
@@ -51,7 +51,7 @@ export function mapProtocolArtifactNameToCircuitName(artifact: ProtocolArtifact)
       return 'parity-base';
     case 'ParityRootArtifact':
       return 'parity-root';
-    case 'PublicTube':
+    case 'PublicChonkVerifier':
       return 'chonk-verifier-public';
     case 'PrivateTxBaseRollupArtifact':
       return 'rollup-tx-base-private';

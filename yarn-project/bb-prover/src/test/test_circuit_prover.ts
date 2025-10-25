@@ -160,12 +160,14 @@ export class TestCircuitProver implements ServerCircuitProver {
 
   public getPublicChonkVerifierProof(
     inputs: PublicChonkVerifierPrivateInputs,
-  ): Promise<PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>> {
+  ): Promise<
+    PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>
+  > {
     return this.applyDelay(ProvingRequestType.PUBLIC_CHONK_VERIFIER, () =>
       makePublicInputsAndRecursiveProof(
         new PublicChonkVerifierPublicInputs(inputs.hidingKernelProofData.publicInputs, inputs.proverId),
         makeEmptyRecursiveProof(NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH),
-        ProtocolCircuitVks.PublicTube,
+        ProtocolCircuitVks.PublicChonkVerifier,
       ),
     );
   }

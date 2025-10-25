@@ -1,6 +1,6 @@
 import type { NoirCompiledCircuit, NoirCompiledCircuitWithName } from '@aztec/stdlib/noir';
 
-import PublicTubeJson from '../../artifacts/chonk_verifier_public.json' with { type: 'json' };
+import PublicChonkVerifierJson from '../../artifacts/chonk_verifier_public.json' with { type: 'json' };
 import ParityBaseJson from '../../artifacts/parity_base.json' with { type: 'json' };
 import ParityRootJson from '../../artifacts/parity_root.json' with { type: 'json' };
 import BlockMergeRollupJson from '../../artifacts/rollup_block_merge.json' with { type: 'json' };
@@ -30,7 +30,7 @@ import type { ServerProtocolArtifact } from './types.js';
 export const ServerCircuitArtifacts: Record<ServerProtocolArtifact, NoirCompiledCircuit> = {
   ParityBaseArtifact: ParityBaseJson as NoirCompiledCircuit,
   ParityRootArtifact: ParityRootJson as NoirCompiledCircuit,
-  PublicTube: PublicTubeJson as NoirCompiledCircuit,
+  PublicChonkVerifier: PublicChonkVerifierJson as NoirCompiledCircuit,
   PrivateTxBaseRollupArtifact: PrivateTxBaseRollupJson as NoirCompiledCircuit,
   PublicTxBaseRollupArtifact: PublicTxBaseRollupJson as NoirCompiledCircuit,
   TxMergeRollupArtifact: TxMergeRollupJson as NoirCompiledCircuit,
@@ -50,7 +50,7 @@ export const ServerCircuitArtifacts: Record<ServerProtocolArtifact, NoirCompiled
 export const SimulatedServerCircuitArtifacts: Record<ServerProtocolArtifact, NoirCompiledCircuit> = {
   ParityBaseArtifact: ParityBaseJson as NoirCompiledCircuit,
   ParityRootArtifact: ParityRootJson as NoirCompiledCircuit,
-  PublicTube: PublicTubeJson as NoirCompiledCircuit,
+  PublicChonkVerifier: PublicChonkVerifierJson as NoirCompiledCircuit,
   PrivateTxBaseRollupArtifact: PrivateTxBaseRollupSimulatedJson as NoirCompiledCircuit,
   PublicTxBaseRollupArtifact: PublicTxBaseRollupSimulatedJson as NoirCompiledCircuit,
   TxMergeRollupArtifact: TxMergeRollupJson as NoirCompiledCircuit,

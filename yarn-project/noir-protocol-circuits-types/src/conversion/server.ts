@@ -97,9 +97,9 @@ import type {
   PrivateToPublicKernelCircuitPublicInputs as PrivateToPublicKernelCircuitPublicInputsNoir,
   PrivateTxBaseRollupPrivateInputs as PrivateTxBaseRollupPrivateInputsNoir,
   ProofData as ProofDataNoir,
-  PublicLogs as PublicLogsNoir,
   PublicChonkVerifierPrivateInputs as PublicChonkVerifierPrivateInputsNoir,
   PublicChonkVerifierPublicInputs as PublicChonkVerifierPublicInputsNoir,
+  PublicLogs as PublicLogsNoir,
   PublicTxBaseRollupPrivateInputs as PublicTxBaseRollupPrivateInputsNoir,
   RootRollupPrivateInputs as RootRollupPrivateInputsNoir,
   RootRollupPublicInputs as RootRollupPublicInputsNoir,
@@ -695,7 +695,9 @@ export function mapParityRootPrivateInputsToNoir(inputs: ParityRootPrivateInputs
   };
 }
 
-export function mapPublicChonkVerifierPrivateInputsToNoir(inputs: PublicChonkVerifierPrivateInputs): PublicChonkVerifierPrivateInputsNoir {
+export function mapPublicChonkVerifierPrivateInputsToNoir(
+  inputs: PublicChonkVerifierPrivateInputs,
+): PublicChonkVerifierPrivateInputsNoir {
   return {
     hiding_kernel_proof_data: mapProofDataToNoir(
       inputs.hidingKernelProofData,
@@ -712,7 +714,9 @@ export function mapPublicChonkVerifierPublicInputsFromNoir(inputs: PublicChonkVe
   );
 }
 
-export function mapPublicChonkVerifierPublicInputsToNoir(inputs: PublicChonkVerifierPublicInputs): PublicChonkVerifierPublicInputsNoir {
+export function mapPublicChonkVerifierPublicInputsToNoir(
+  inputs: PublicChonkVerifierPublicInputs,
+): PublicChonkVerifierPublicInputsNoir {
   return {
     private_tail: mapPrivateToPublicKernelCircuitPublicInputsToNoir(inputs.privateTail),
     prover_id: mapFieldToNoir(inputs.proverId),
@@ -743,7 +747,10 @@ export function mapPublicTxBaseRollupPrivateInputsToNoir(
   inputs: PublicTxBaseRollupPrivateInputs,
 ): PublicTxBaseRollupPrivateInputsNoir {
   return {
-    public_tube_proof_data: mapProofDataToNoir(inputs.publicChonkVerifierProofData, mapPublicChonkVerifierPublicInputsToNoir),
+    public_chonk_verifier_proof_data: mapProofDataToNoir(
+      inputs.publicChonkVerifierProofData,
+      mapPublicChonkVerifierPublicInputsToNoir,
+    ),
     avm_proof_data: mapProofDataToNoir(inputs.avmProofData, mapAvmCircuitPublicInputsToNoir),
     start_sponge_blob: mapSpongeBlobToNoir(inputs.hints.startSpongeBlob),
     last_archive: mapAppendOnlyTreeSnapshotToNoir(inputs.hints.lastArchive),

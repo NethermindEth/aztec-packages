@@ -38,7 +38,7 @@ import {
   convertParityRootPrivateInputsToWitnessMap,
   convertPrivateTxBaseRollupOutputsFromWitnessMap,
   convertPrivateTxBaseRollupPrivateInputsToWitnessMap,
-  convertPublicTubeOutputsFromWitnessMap,
+  convertPublicChonkVerifierOutputsFromWitnessMap,
   convertPublicChonkVerifierPrivateInputsToWitnessMap,
   convertPublicTxBaseRollupOutputsFromWitnessMap,
   convertPublicTxBaseRollupPrivateInputsToWitnessMap,
@@ -204,15 +204,17 @@ export class BBNativeRollupProver implements ServerCircuitProver {
 
   public async getPublicChonkVerifierProof(
     inputs: PublicChonkVerifierPrivateInputs,
-  ): Promise<PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>> {
-    const artifactName = 'PublicTube';
+  ): Promise<
+    PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>
+  > {
+    const artifactName = 'PublicChonkVerifier';
 
     const { circuitOutput, proof } = await this.createRecursiveProof(
       inputs,
       artifactName,
       NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH,
       convertPublicChonkVerifierPrivateInputsToWitnessMap,
-      convertPublicTubeOutputsFromWitnessMap,
+      convertPublicChonkVerifierOutputsFromWitnessMap,
     );
 
     const verificationKey = this.getVerificationKeyDataForCircuit(artifactName);

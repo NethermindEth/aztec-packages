@@ -22,7 +22,11 @@ import type { AppendOnlyTreeSnapshot, MerkleTreeId } from '@aztec/stdlib/trees';
 import type { ProcessedTx } from '@aztec/stdlib/tx';
 import { VerificationKeyData, VkData } from '@aztec/stdlib/vks';
 
-import { getCivcProofFromTx, getPublicChonkVerifierPrivateInputsFromTx, toProofData } from './block-building-helpers.js';
+import {
+  getCivcProofFromTx,
+  getPublicChonkVerifierPrivateInputsFromTx,
+  toProofData,
+} from './block-building-helpers.js';
 
 /**
  * Helper class to manage the proving cycle of a transaction
@@ -73,7 +77,7 @@ export class TxProvingState {
     }
   }
 
-  public setPublicTubeProof(
+  public setPublicChonkVerifierProof(
     publicChonkVerifierProofAndVk: PublicInputsAndRecursiveProof<
       PublicChonkVerifierPublicInputs,
       typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH
@@ -105,7 +109,7 @@ export class TxProvingState {
       throw new Error('Should create private base rollup for a tx not requiring avm proof.');
     }
     if (!this.publicChonkVerifier) {
-      throw new Error('Tx not ready for proving base rollup: public tube proof undefined');
+      throw new Error('Tx not ready for proving base rollup: public chonk verifier proof undefined');
     }
     if (!this.avm) {
       throw new Error('Tx not ready for proving base rollup: avm proof undefined');
