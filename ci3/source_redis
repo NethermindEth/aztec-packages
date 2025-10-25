@@ -76,7 +76,7 @@ function redis_setexz_with_disk {
   cat "$tmpfile" | redis_cli -x SETEX "$key" "$expire" &>/dev/null
 
   # Also transfer to bastion disk in CI (async)
-  if [ "${DISK_LOGS_ENABLED:-0}" -eq 1 ]; then
+  if [ "${CI:-0}" -eq 1 ]; then
     disk_log_transfer "$key" "$tmpfile"
   fi
 
