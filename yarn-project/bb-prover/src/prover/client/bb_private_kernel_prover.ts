@@ -1,4 +1,7 @@
+import { AztecClientBackend, Barretenberg } from '@aztec/bb.js';
 import { createLogger } from '@aztec/foundation/log';
+import { Timer } from '@aztec/foundation/timer';
+import { serializeWitness } from '@aztec/noir-noirc_abi';
 import {
   convertHidingKernelPublicInputsToWitnessMapWithAbi,
   convertHidingKernelToRollupInputsToWitnessMapWithAbi,
@@ -37,8 +40,10 @@ import type {
   PrivateKernelTailCircuitPublicInputs,
 } from '@aztec/stdlib/kernel';
 import type { NoirCompiledCircuitWithName } from '@aztec/stdlib/noir';
-import type { ClientIvcProof } from '@aztec/stdlib/proofs';
+import { ClientIvcProof } from '@aztec/stdlib/proofs';
 import type { CircuitSimulationStats, CircuitWitnessGenerationStats } from '@aztec/stdlib/stats';
+
+import { ungzip } from 'pako';
 
 export abstract class BBPrivateKernelProver implements PrivateKernelProver {
   constructor(
@@ -263,11 +268,34 @@ export abstract class BBPrivateKernelProver implements PrivateKernelProver {
     return kernelProofOutput;
   }
 
-  public createClientIvcProof(_executionSteps: PrivateExecutionStep[]): Promise<ClientIvcProof> {
-    throw new Error('Not implemented');
+  public async createClientIvcProof(executionSteps: PrivateExecutionStep[]): Promise<ClientIvcProof> {
+    const timer = new Timer();
+    this.log.info(`Generating ClientIVC proof...`);
+    const backend = new AztecClientBackend(
+      executionSteps.map(step => ungzip(step.bytecode)),
+      Barretenberg.getSingleton(),
+    );
+
+    const [proof] = await backend.prove(
+      executionSteps.map(step => ungzip(serializeWitness(step.witness))),
+      executionSteps.map(step => step.vk),
+    );
+    await backend.destroy();
+    this.log.info(`Generated ClientIVC proof`, {
+      eventName: 'client-ivc-proof-generation',
+      duration: timer.ms(),
+      proofSize: proof.length,
+    });
+    return ClientIvcProof.fromBufferArray(proof);
   }
 
-  public computeGateCountForCircuit(_bytecode: Buffer, _circuitName: string): Promise<number> {
-    throw new Error('Not implemented');
+  public async computeGateCountForCircuit(_bytecode: Buffer, _circuitName: string): Promise<number> {
+    // Note we do not pass the vk to the backend. This is unneeded for gate counts.
+    const backend = new AztecClientBackend([ungzip(_bytecode)], Barretenberg.getSingleton());
+
+    const gateCount = await backend.gates();
+    await backend.destroy();
+
+    return gateCount[0];
   }
 }

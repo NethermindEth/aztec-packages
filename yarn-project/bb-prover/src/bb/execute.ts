@@ -1,4 +1,3 @@
-import { Barretenberg } from '@aztec/bb.js';
 import { sha256 } from '@aztec/foundation/crypto';
 import type { LogFn, Logger } from '@aztec/foundation/log';
 import { Timer } from '@aztec/foundation/timer';
@@ -7,7 +6,6 @@ import type { AvmCircuitInputs, AvmCircuitPublicInputs } from '@aztec/stdlib/avm
 import * as proc from 'child_process';
 import { promises as fs } from 'fs';
 import { basename, dirname, join } from 'path';
-import readline from 'readline';
 
 import type { UltraHonkFlavor } from '../honk.js';
 
@@ -437,7 +435,6 @@ export async function verifyClientIvcProof(
   log: LogFn,
   concurrency = 1,
 ): Promise<BBFailure | BBSuccess> {
-  Barretenberg.getSingleton().clientIvcVerify({});
   const binaryPresent = await fs
     .access(pathToBB, fs.constants.R_OK)
     .then(_ => true)

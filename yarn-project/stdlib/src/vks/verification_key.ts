@@ -134,6 +134,16 @@ export class VerificationKeyAsFields {
     return new VerificationKeyAsFields(reader.readVector(Fr), reader.readObject(Fr));
   }
 
+  static fromFrBuffer(vkBytes: Buffer): Promise<VerificationKeyAsFields> {
+    const vkFields: Fr[] = [];
+    for (let i = 0; i < vkBytes.length / Fr.SIZE_IN_BYTES; i++) {
+      const start = i * Fr.SIZE_IN_BYTES;
+      const end = (i + 1) * Fr.SIZE_IN_BYTES;
+      vkFields.push(Fr.fromBuffer(vkBytes.subarray(start, end)));
+    }
+    return VerificationKeyAsFields.fromKey(vkFields);
+  }
+
   /**
    * Builds a fake verification key that should be accepted by circuits.
    * @returns A fake verification key.

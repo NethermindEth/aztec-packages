@@ -1,7 +1,9 @@
+import { AztecClientBackend, Barretenberg } from '@aztec/bb.js';
 import {
   AVM_V2_VERIFICATION_KEY_LENGTH_IN_FIELDS_PADDED,
   CIVC_PROOF_LENGTH,
   CIVC_VK_LENGTH_IN_FIELDS,
+  HIDING_KERNEL_IO_PUBLIC_INPUTS_SIZE,
 } from '@aztec/constants';
 import { Fr } from '@aztec/foundation/fields';
 import { createLogger } from '@aztec/foundation/log';
@@ -9,7 +11,7 @@ import { mapAvmCircuitPublicInputsToNoir } from '@aztec/noir-protocol-circuits-t
 import { AvmTestContractArtifact } from '@aztec/noir-test-contracts.js/AvmTest';
 import { PublicTxSimulationTester, bulkTest, simAvmMinimalPublicTx } from '@aztec/simulator/public/fixtures';
 import type { AvmCircuitInputs } from '@aztec/stdlib/avm';
-import type { ProofAndVerificationKey } from '@aztec/stdlib/interfaces/server';
+import { Proof, RecursiveProof } from '@aztec/stdlib/proofs';
 import { VerificationKeyAsFields } from '@aztec/stdlib/vks';
 
 import { jest } from '@jest/globals';
@@ -18,7 +20,7 @@ import { fileURLToPath } from 'url';
 
 import MockHidingJson from '../artifacts/mock_hiding.json' with { type: 'json' };
 import { getWorkingDirectory } from './bb_working_directory.js';
-import { proveAvm, proveClientIVC, proveRollupHonk } from './prove_native.js';
+import { proveAvm, proveRollupHonk } from './prove_native.js';
 import type { KernelPublicInputs } from './types/index.js';
 import {
   MockRollupTxBasePublicCircuit,
@@ -41,7 +43,7 @@ async function proveMockPublicBaseRollup(
   bbWorkingDirectory: string,
   bbBinaryPath: string,
   clientIVCPublicInputs: KernelPublicInputs,
-  civcProof: ProofAndVerificationKey<typeof CIVC_PROOF_LENGTH>,
+  civcProof: RecursiveProof<typeof CIVC_PROOF_LENGTH>,
   skipPublicInputsValidation: boolean = false,
 ) {
   const { vk, proof, publicInputs } = await proveAvm(
@@ -58,7 +60,7 @@ async function proveMockPublicBaseRollup(
   const baseWitnessResult = await witnessGenMockPublicBaseCircuit({
     civc_proof_data: {
       public_inputs: clientIVCPublicInputs,
-      proof: mapRecursiveProofToNoir(civcProof.proof),
+      proof: mapRecursiveProofToNoir(civcProof),
       vk_data: mapVerificationKeyToNoir(ivcVk, CIVC_VK_LENGTH_IN_FIELDS),
     },
     verification_key: mapVerificationKeyToNoir(vk, AVM_V2_VERIFICATION_KEY_LENGTH_IN_FIELDS_PADDED),
@@ -79,21 +81,45 @@ async function proveMockPublicBaseRollup(
 describe('AVM Integration', () => {
   let bbWorkingDirectory: string;
   let bbBinaryPath: string;
-  let civcProof: ProofAndVerificationKey<typeof CIVC_PROOF_LENGTH>;
-  let clientIVCPublicInputs: KernelPublicInputs;
 
+  let backend: AztecClientBackend;
+  let civcProof: RecursiveProof<typeof CIVC_PROOF_LENGTH>;
+  let clientIVCPublicInputs: KernelPublicInputs;
   let simTester: PublicTxSimulationTester;
 
   beforeAll(async () => {
-    const clientIVCProofPath = await getWorkingDirectory('bb-avm-integration-client-ivc-');
+    const barretenberg = await Barretenberg.initSingleton({
+      threads: 16,
+      // logger: (m: string) => logger.info(m),
+    });
+
     bbBinaryPath = path.join(
       path.dirname(fileURLToPath(import.meta.url)),
       '../../../barretenberg/cpp/build/bin',
       'bb-avm',
     );
+
     const [bytecodes, witnessStack, tailPublicInputs, vks] = await generateTestingIVCStack(1, 0);
     clientIVCPublicInputs = tailPublicInputs;
-    civcProof = await proveClientIVC(bbBinaryPath, clientIVCProofPath, witnessStack, bytecodes, vks, logger);
+    // civcProof = await proveClientIVC(bbBinaryPath, clientIVCProofPath, witnessStack, bytecodes, vks, logger);
+    backend = new AztecClientBackend(bytecodes, barretenberg);
+    const [proofAsFields, , vkBytes] = await backend.prove(witnessStack, vks);
+    logger.debug(`Client IVC proof generated with ${proofAsFields.length} fields`);
+
+    const vk = await VerificationKeyAsFields.fromFrBuffer(Buffer.from(vkBytes));
+    const numCustomPublicInputs = vk.numPublicInputs - HIDING_KERNEL_IO_PUBLIC_INPUTS_SIZE;
+    // Convert Uint8Array fields to Fr instances
+    const fields = proofAsFields.map(f => Fr.fromBuffer(Buffer.from(f)));
+
+    // Slice off custom public inputs from the beginning.
+    const fieldsWithoutPublicInputs = fields.slice(numCustomPublicInputs);
+
+    // Convert fields to binary buffer
+    const proofBuffer = Buffer.concat(proofAsFields.slice(numCustomPublicInputs));
+
+    // Create Proof directly (not using fromBuffer which expects different format)
+    const proof = new Proof(proofBuffer, numCustomPublicInputs);
+    civcProof = new RecursiveProof(fieldsWithoutPublicInputs, proof, true, CIVC_PROOF_LENGTH);
   });
 
   beforeEach(async () => {
