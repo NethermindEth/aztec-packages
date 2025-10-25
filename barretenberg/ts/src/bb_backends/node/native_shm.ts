@@ -74,11 +74,10 @@ export class BarretenbergNativeShmSyncBackend implements IMsgpackBackendSync {
     // Disconnect from event loop so process can exit. The kill wrapper will reap bb once parent (node) dies.
     bbProcess.unref();
 
-    if (bbProcess.stdout && logger) {
-      readline.createInterface({ input: bbProcess.stdout }).on('line', logger);
-    }
-    if (bbProcess.stderr && logger) {
-      readline.createInterface({ input: bbProcess.stderr }).on('line', logger);
+    if (logger) {
+      logger("Logger attached to bb process. DON'T FORGET TO DESTROY THE BACKEND to allow Node.js to exit.");
+      readline.createInterface({ input: bbProcess.stdout! }).on('line', logger);
+      readline.createInterface({ input: bbProcess.stderr! }).on('line', logger);
     }
 
     // Track if process has exited

@@ -1,9 +1,8 @@
 import { Barretenberg, BarretenbergSync } from '../index.js';
-import { Fr } from '../types/index.js';
-import { serializeBufferable } from '../serialize/index.js';
 import { BarretenbergWasmMain } from '../barretenberg_wasm/barretenberg_wasm_main/index.js';
 import { fetchModuleAndThreads } from '../barretenberg_wasm/index.js';
 import { BackendType } from './index.js';
+import { Fr } from './testing/fields.js';
 
 /**
  * Async API benchmark test: WASM vs Native backends with proper non-blocking I/O
@@ -83,80 +82,59 @@ describe('poseidon2Hash benchmark (Async API): WASM vs Native', () => {
     }
   });
 
-  async function directPoseidon2Hash(inputsBuffer: Fr[]): Promise<Fr> {
-    const inArgs = [inputsBuffer].map(serializeBufferable);
-    const outTypes = [Fr];
-    const result = wasm.callWasmExport(
-      'poseidon2_hash',
-      inArgs,
-      outTypes.map(t => t.SIZE_IN_BYTES),
-    );
-    const out = result.map((r, i) => outTypes[i].fromBuffer(r));
-    return Promise.resolve(out[0]);
-  }
-
   it.each(SIZES)(
     'benchmark with %p field elements',
     async size => {
       // Generate random inputs
       const inputs = Array(size)
         .fill(0)
-        .map(() => Fr.random());
+        .map(() => Fr.random().toBuffer());
 
-      // Benchmark 1: Direct WASM (baseline - always available)
-      const directStart = performance.now();
-      for (let i = 0; i < ITERATIONS; i++) {
-        await directPoseidon2Hash(inputs);
-      }
-      const directTime = performance.now() - directStart;
-
-      // Benchmark 2: WASM (async)
+      // Benchmark 1: WASM (async)
       let wasmTime = 0;
       if (wasmApi) {
         const wasmStart = performance.now();
         for (let i = 0; i < ITERATIONS; i++) {
-          await wasmApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
+          await wasmApi.poseidon2Hash({ inputs });
         }
         wasmTime = performance.now() - wasmStart;
       }
 
-      // Benchmark 3: Native Socket (async with non-blocking I/O)
+      // Benchmark 2: Native Socket (async with non-blocking I/O)
       let nativeSocketTime = 0;
       if (nativeSocketApi) {
         const nativeSocketStart = performance.now();
         for (let i = 0; i < ITERATIONS; i++) {
-          await nativeSocketApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
+          await nativeSocketApi.poseidon2Hash({ inputs });
         }
         nativeSocketTime = performance.now() - nativeSocketStart;
       }
 
-      // Benchmark 4: Native Shared Memory (async)
+      // Benchmark 3: Native Shared Memory (async)
       let nativeShmTime = 0;
       if (nativeShmApi) {
         const nativeShmStart = performance.now();
         for (let i = 0; i < ITERATIONS; i++) {
-          await nativeShmApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
+          await nativeShmApi.poseidon2Hash({ inputs });
         }
         nativeShmTime = performance.now() - nativeShmStart;
       }
 
-      // Benchmark 5: Native Shared Memory (sync)
+      // Benchmark 4: Native Shared Memory (sync)
       let nativeShmSyncTime = 0;
       if (nativeShmSyncApi) {
         const nativeShmSyncStart = performance.now();
         for (let i = 0; i < ITERATIONS; i++) {
-          nativeShmSyncApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
+          nativeShmSyncApi.poseidon2Hash({ inputs });
         }
         nativeShmSyncTime = performance.now() - nativeShmSyncStart;
       }
 
       // Calculate metrics (all relative to WASM baseline)
-      const directOverhead = ((directTime - wasmTime) / wasmTime) * 100;
       const nativeSocketOverhead = ((nativeSocketTime - wasmTime) / wasmTime) * 100;
       const nativeShmOverhead = ((nativeShmTime - wasmTime) / wasmTime) * 100;
       const nativeShmSyncOverhead = ((nativeShmSyncTime - wasmTime) / wasmTime) * 100;
 
-      const avgDirectTimeUs = (directTime / ITERATIONS) * 1000; // microseconds
       const avgWasmTimeUs = (wasmTime / ITERATIONS) * 1000;
       const avgNativeSocketTimeUs = (nativeSocketTime / ITERATIONS) * 1000;
       const avgNativeShmTimeUs = (nativeShmTime / ITERATIONS) * 1000;
@@ -178,10 +156,6 @@ describe('poseidon2Hash benchmark (Async API): WASM vs Native', () => {
       } else {
         process.stdout.write(`│ WASM:                                          unavailable │\n`);
       }
-
-      process.stdout.write(
-        `│ Direct WASM:        ${directTime.toFixed(2).padStart(8)}ms (${avgDirectTimeUs.toFixed(2).padStart(7)}µs/call) ${formatOverhead(directOverhead)}   │\n`,
-      );
 
       if (nativeSocketApi) {
         process.stdout.write(
@@ -209,27 +183,21 @@ describe('poseidon2Hash benchmark (Async API): WASM vs Native', () => {
 
       process.stdout.write(`└────────────────────────────────────────────────────────────┘\n`);
 
-      // Sanity check: verify all backends produce same result as direct WASM
-      const directResult = await directPoseidon2Hash(inputs);
-
-      if (wasmApi) {
-        const wasmResult = await wasmApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
-        expect(Buffer.from(wasmResult.hash)).toEqual(directResult.toBuffer());
-      }
+      const wasmResult = await wasmApi!.poseidon2Hash({ inputs });
 
       if (nativeSocketApi) {
-        const nativeSocketResult = await nativeSocketApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
-        expect(Buffer.from(nativeSocketResult.hash)).toEqual(directResult.toBuffer());
+        const nativeSocketResult = await nativeSocketApi.poseidon2Hash({ inputs });
+        expect(Buffer.from(nativeSocketResult.hash)).toEqual(wasmResult.hash);
       }
 
       if (nativeShmApi) {
-        const nativeShmResult = await nativeShmApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
-        expect(Buffer.from(nativeShmResult.hash)).toEqual(directResult.toBuffer());
+        const nativeShmResult = await nativeShmApi.poseidon2Hash({ inputs });
+        expect(Buffer.from(nativeShmResult.hash)).toEqual(wasmResult.hash);
       }
 
       if (nativeShmSyncApi) {
-        const nativeShmSyncResult = nativeShmSyncApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
-        expect(Buffer.from(nativeShmSyncResult.hash)).toEqual(directResult.toBuffer());
+        const nativeShmSyncResult = nativeShmSyncApi.poseidon2Hash({ inputs });
+        expect(Buffer.from(nativeShmSyncResult.hash)).toEqual(wasmResult.hash);
       }
 
       // Test always passes, this is just for measuring performance
@@ -246,28 +214,23 @@ describe('poseidon2Hash benchmark (Async API): WASM vs Native', () => {
     for (let test = 0; test < NUM_RANDOM_TESTS; test++) {
       const inputs = Array(size)
         .fill(0)
-        .map(() => Fr.random());
+        .map(() => Fr.random().toBuffer());
 
-      const directResult = await directPoseidon2Hash(inputs);
-
-      if (wasmApi) {
-        const wasmResult = await wasmApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
-        expect(Buffer.from(wasmResult.hash)).toEqual(directResult.toBuffer());
-      }
+      const wasmResult = await wasmApi!.poseidon2Hash({ inputs });
 
       if (nativeSocketApi) {
-        const nativeSocketResult = await nativeSocketApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
-        expect(Buffer.from(nativeSocketResult.hash)).toEqual(directResult.toBuffer());
+        const nativeSocketResult = await nativeSocketApi.poseidon2Hash({ inputs });
+        expect(Buffer.from(nativeSocketResult.hash)).toEqual(wasmResult.hash);
       }
 
       if (nativeShmApi) {
-        const nativeShmResult = await nativeShmApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
-        expect(Buffer.from(nativeShmResult.hash)).toEqual(directResult.toBuffer());
+        const nativeShmResult = await nativeShmApi.poseidon2Hash({ inputs });
+        expect(Buffer.from(nativeShmResult.hash)).toEqual(wasmResult.hash);
       }
 
       if (nativeShmSyncApi) {
-        const nativeShmSyncResult = nativeShmSyncApi.poseidon2Hash({ inputs: inputs.map(fr => fr.toBuffer()) });
-        expect(Buffer.from(nativeShmSyncResult.hash)).toEqual(directResult.toBuffer());
+        const nativeShmSyncResult = nativeShmSyncApi.poseidon2Hash({ inputs });
+        expect(Buffer.from(nativeShmSyncResult.hash)).toEqual(wasmResult.hash);
       }
     }
   });

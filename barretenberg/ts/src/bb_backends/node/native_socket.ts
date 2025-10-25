@@ -70,11 +70,10 @@ export class BarretenbergNativeSocketAsyncBackend implements IMsgpackBackendAsyn
     // Disconnect from event loop so process can exit. The kill wrapper will reap bb once parent (node) dies.
     this.process.unref();
 
-    if (this.process.stdout && logger) {
-      readline.createInterface({ input: this.process.stdout }).on('line', logger);
-    }
-    if (this.process.stderr && logger) {
-      readline.createInterface({ input: this.process.stderr }).on('line', logger);
+    if (logger) {
+      logger("Logger attached to bb process. DON'T FORGET TO DESTROY THE BACKEND to allow Node.js to exit.");
+      readline.createInterface({ input: this.process.stdout! }).on('line', logger);
+      readline.createInterface({ input: this.process.stderr! }).on('line', logger);
     }
 
     this.process.on('error', err => {
