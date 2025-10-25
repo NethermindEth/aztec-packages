@@ -23,7 +23,7 @@ import type { ProcessedTx } from '@aztec/stdlib/tx';
 import { VerificationKeyData, VkData } from '@aztec/stdlib/vks';
 
 import {
-  getCivcProofFromTx,
+  getChonkProofFromTx,
   getPublicChonkVerifierPrivateInputsFromTx,
   toProofData,
 } from './block-building-helpers.js';
@@ -97,7 +97,7 @@ export class TxProvingState {
 
     const privateTailProofData = new ProofData(
       this.processedTx.data.toPrivateToRollupKernelCircuitPublicInputs(),
-      getCivcProofFromTx(this.processedTx),
+      getChonkProofFromTx(this.processedTx),
       getVkData('HidingKernelToRollup'),
     );
 

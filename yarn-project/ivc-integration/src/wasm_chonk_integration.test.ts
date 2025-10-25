@@ -1,4 +1,4 @@
-import { BB_RESULT, verifyClientIvcProof, writeChonkProofToPath } from '@aztec/bb-prover';
+import { BB_RESULT, verifyChonkProof, writeChonkProofToPath } from '@aztec/bb-prover';
 import { AztecClientBackend } from '@aztec/bb.js';
 import { createLogger } from '@aztec/foundation/log';
 
@@ -48,7 +48,7 @@ describe('Client IVC Integration', () => {
     // Use the pre-generated ivc vk to verify the proof.
     const vkPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '../artifacts/keys/mock_hiding.ivc.vk');
 
-    const verifyWasmResultInNative = await verifyClientIvcProof(bbBinaryPath, proofPath, vkPath, logger.info);
+    const verifyWasmResultInNative = await verifyChonkProof(bbBinaryPath, proofPath, vkPath, logger.info);
     expect(verifyWasmResultInNative.status).toEqual(BB_RESULT.SUCCESS);
   });
 

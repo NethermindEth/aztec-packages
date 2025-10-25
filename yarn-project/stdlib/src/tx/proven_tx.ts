@@ -18,7 +18,7 @@ export class TxProvingResult {
   constructor(
     public privateExecutionResult: PrivateExecutionResult,
     public publicInputs: PrivateKernelTailCircuitPublicInputs,
-    public clientIvcProof: ChonkProof,
+    public chonkProof: ChonkProof,
     public stats?: ProvingStats,
   ) {}
 
@@ -27,7 +27,7 @@ export class TxProvingResult {
 
     return await Tx.create({
       data: this.publicInputs,
-      clientIvcProof: this.clientIvcProof,
+      chonkProof: this.chonkProof,
       contractClassLogFields: contractClassLogs,
       publicFunctionCalldata: this.privateExecutionResult.publicFunctionCalldata,
     });
@@ -42,14 +42,14 @@ export class TxProvingResult {
       .object({
         privateExecutionResult: PrivateExecutionResult.schema,
         publicInputs: PrivateKernelTailCircuitPublicInputs.schema,
-        clientIvcProof: ChonkProof.schema,
+        chonkProof: ChonkProof.schema,
         timings: optional(ProvingTimingsSchema),
       })
       .transform(TxProvingResult.from);
   }
 
   static from(fields: FieldsOf<TxProvingResult>) {
-    return new TxProvingResult(fields.privateExecutionResult, fields.publicInputs, fields.clientIvcProof);
+    return new TxProvingResult(fields.privateExecutionResult, fields.publicInputs, fields.chonkProof);
   }
 
   static async random() {

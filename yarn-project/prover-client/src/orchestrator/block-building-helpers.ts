@@ -209,8 +209,8 @@ export const insertSideEffectsAndBuildBaseRollupHints = runInSpan(
   },
 );
 
-export function getCchonkProofFromTx(tx: Tx | ProcessedTx) {
-  const proofFields = tx.clientIvcProof.proof;
+export function getChonkProofFromTx(tx: Tx | ProcessedTx) {
+  const proofFields = tx.chonkProof.proof;
   const numPublicInputs = proofFields.length - CHONK_PROOF_LENGTH;
   const binaryProof = new Proof(Buffer.concat(proofFields.map(field => field.toBuffer())), numPublicInputs);
   const proofFieldsWithoutPublicInputs = proofFields.slice(numPublicInputs);
@@ -220,7 +220,7 @@ export function getCchonkProofFromTx(tx: Tx | ProcessedTx) {
 export function getPublicChonkVerifierPrivateInputsFromTx(tx: Tx | ProcessedTx, proverId: Fr) {
   const proofData = new ProofData(
     tx.data.toPrivateToPublicKernelCircuitPublicInputs(),
-    getCchonkProofFromTx(tx),
+    getChonkProofFromTx(tx),
     getVkData('HidingKernelToPublic'),
   );
   return new PublicChonkVerifierPrivateInputs(proofData, proverId);

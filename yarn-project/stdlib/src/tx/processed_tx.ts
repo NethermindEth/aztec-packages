@@ -36,7 +36,7 @@ export type ProcessedTx = {
   /**
    * Proof for the private execution.
    */
-  clientIvcProof: ChonkProof;
+  chonkProof: ChonkProof;
   /**
    * The request for AVM proving.
    */
@@ -118,7 +118,7 @@ export function makeProcessedTxFromPrivateOnlyTx(
   return {
     hash: txEffect.txHash,
     data: tx.data,
-    clientIvcProof: tx.clientIvcProof,
+    chonkProof: tx.chonkProof,
     avmProvingRequest: undefined,
     globalVariables,
     txEffect,
@@ -182,7 +182,7 @@ export function makeProcessedTxFromTxWithPublicCalls(
   return {
     hash: txEffect.txHash,
     data: tx.data,
-    clientIvcProof: tx.clientIvcProof,
+    chonkProof: tx.chonkProof,
     avmProvingRequest,
     globalVariables,
     txEffect,

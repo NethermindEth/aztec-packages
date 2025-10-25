@@ -162,12 +162,12 @@ describe('prover/orchestrator', () => {
           context.getPreviousBlockHeader(),
         );
 
-        processedTxs.forEach(tx => (tx.clientIvcProof = ClientIvcProof.random()));
+        processedTxs.forEach(tx => (tx.chonkProof = ClientIvcProof.random()));
         const txs = processedTxs.map(tx =>
           Tx.from({
             txHash: tx.hash,
             data: tx.data,
-            clientIvcProof: tx.clientIvcProof,
+            chonkProof: tx.chonkProof,
             contractClassLogFields: [],
             publicFunctionCalldata: [],
           }),

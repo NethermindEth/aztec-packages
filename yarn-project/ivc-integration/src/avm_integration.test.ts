@@ -57,7 +57,7 @@ async function proveMockPublicBaseRollup(
     MockHidingJson.verificationKey.fields.map((str: string) => Fr.fromHexString(str)),
   );
   const baseWitnessResult = await witnessGenMockPublicBaseCircuit({
-    civc_proof_data: {
+    chonk_proof_data: {
       public_inputs: chonkPublicInputs,
       proof: mapRecursiveProofToNoir(chonkProof.proof),
       vk_data: mapVerificationKeyToNoir(chonkVk, CHONK_VK_LENGTH_IN_FIELDS),
@@ -111,13 +111,7 @@ describe('AVM Integration', () => {
     expect(avmSimulationResult.revertCode.isOK()).toBe(true);
     const avmCircuitInputs = avmSimulationResult.avmProvingRequest.inputs;
 
-    await proveMockPublicBaseRollup(
-      avmCircuitInputs,
-      bbWorkingDirectory,
-      bbBinaryPath,
-      chonkPublicInputs,
-      chonkProof,
-    );
+    await proveMockPublicBaseRollup(avmCircuitInputs, bbWorkingDirectory, bbBinaryPath, chonkPublicInputs, chonkProof);
   }, 240_000);
 
   it('Should generate and verify an ultra honk proof from an AVM verification for the minimal TX with skipping public inputs validation', async () => {

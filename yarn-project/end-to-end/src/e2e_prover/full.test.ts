@@ -337,7 +337,7 @@ describe('full_prover', () => {
                 data.forPublic,
                 data.forRollup,
               ),
-              clientIvcProof: ClientIvcProof.random(),
+              chonkProof: ClientIvcProof.random(),
               contractClassLogFields: provenTx.contractClassLogFields,
               publicFunctionCalldata: provenTx.publicFunctionCalldata,
             }),

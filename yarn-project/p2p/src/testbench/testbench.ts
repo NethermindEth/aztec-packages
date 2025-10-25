@@ -35,7 +35,7 @@ async function main() {
 
     // Send tx from client 0
     const tx = await mockTx(1, {
-      clientIvcProof: ClientIvcProof.random(),
+      chonkProof: ClientIvcProof.random(),
     });
 
     workerClientManager.processes[0].send({ type: 'SEND_TX', tx: tx.toBuffer() });

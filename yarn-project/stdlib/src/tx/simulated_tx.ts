@@ -69,7 +69,7 @@ export class PrivateSimulationResult {
 
     return await Tx.create({
       data: this.publicInputs,
-      clientIvcProof: ChonkProof.empty(),
+      chonkProof: ChonkProof.empty(),
       contractClassLogFields: contractClassLogs,
       publicFunctionCalldata: this.privateExecutionResult.publicFunctionCalldata,
     });

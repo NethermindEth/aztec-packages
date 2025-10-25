@@ -1,4 +1,4 @@
-import { BB_RESULT, verifyClientIvcProof } from '@aztec/bb-prover';
+import { BB_RESULT, verifyChonkProof } from '@aztec/bb-prover';
 import {
   AVM_V2_VERIFICATION_KEY_LENGTH_IN_FIELDS_PADDED,
   CHONK_PROOF_LENGTH,
@@ -78,7 +78,7 @@ describe('Rollup IVC Integration (suite wrapper)', () => {
       chonkPublicInputs = tailPublicInputs;
 
       chonkProof = await proveChonk(bbBinaryPath, chonkWorkingDirectory, witnessStack, bytecodes, vks, logger);
-      const ivcVerifyResult = await verifyClientIvcProof(
+      const ivcVerifyResult = await verifyChonkProof(
         bbBinaryPath,
         chonkWorkingDirectory.concat('/proof'),
         chonkWorkingDirectory.concat('/vk'),
@@ -112,7 +112,7 @@ describe('Rollup IVC Integration (suite wrapper)', () => {
       );
 
       const privateBaseRollupWitnessResult = await witnessGenMockRollupTxBasePrivateCircuit({
-        civc_proof_data: {
+        chonk_proof_data: {
           public_inputs: chonkPublicInputs,
           proof: mapRecursiveProofToNoir(chonkProof.proof),
           vk_data: mapVerificationKeyToNoir(chonkVk, CHONK_VK_LENGTH_IN_FIELDS),
@@ -135,7 +135,7 @@ describe('Rollup IVC Integration (suite wrapper)', () => {
       };
 
       const publicBaseRollupWitnessResult = await witnessGenMockPublicBaseCircuit({
-        civc_proof_data: {
+        chonk_proof_data: {
           public_inputs: chonkPublicInputs,
           proof: mapRecursiveProofToNoir(chonkProof.proof),
           vk_data: mapVerificationKeyToNoir(chonkVk, CHONK_VK_LENGTH_IN_FIELDS),

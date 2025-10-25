@@ -181,7 +181,7 @@ describe('TxPool: Benchmarks', () => {
 
   it.each(batchSizes)('add txs in batches of %d', async batchSize => {
     for (let i = 0; i < RUNS; i++) {
-      const txs = await timesAsync(batchSize, seed => mockTx(seed, { clientIvcProof: ClientIvcProof.random() }));
+      const txs = await timesAsync(batchSize, seed => mockTx(seed, { chonkProof: ClientIvcProof.random() }));
       const timer = new Timer();
       await pool.addTxs(txs);
       addHistogram[batchSize].record(Math.max(1, Math.ceil(timer.ms())));
@@ -192,7 +192,7 @@ describe('TxPool: Benchmarks', () => {
   });
 
   it.each(batchSizes)('get txs in batches of %d', async batchSize => {
-    const txs = await timesAsync(2 * batchSize, seed => mockTx(seed, { clientIvcProof: ClientIvcProof.random() }));
+    const txs = await timesAsync(2 * batchSize, seed => mockTx(seed, { chonkProof: ClientIvcProof.random() }));
     await pool.addTxs(txs);
     const allHashes = await Promise.all(txs.map(tx => tx.getTxHash()));
     for (let i = 0; i < RUNS; i++) {
@@ -209,7 +209,7 @@ describe('TxPool: Benchmarks', () => {
 
     for (let i = 0; i < RUNS / 2; i++) {
       const txs = await timesAsync(batchSize, seed =>
-        mockTx(i * batchSize + seed, { clientIvcProof: ClientIvcProof.random() }),
+        mockTx(i * batchSize + seed, { chonkProof: ClientIvcProof.random() }),
       );
       await pool.addTxs(txs);
       allHashes.push(...(await Promise.all(txs.map(tx => tx.getTxHash()))));

@@ -489,7 +489,7 @@ export async function generateSimulatedProvingResult(
 
   return {
     publicInputs,
-    clientIvcProof: ClientIvcProof.empty(),
+    chonkProof: ClientIvcProof.empty(),
     executionSteps: executionSteps,
   };
 }

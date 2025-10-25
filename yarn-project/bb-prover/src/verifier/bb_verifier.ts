@@ -104,7 +104,7 @@ export class BBCircuitVerifier implements ClientProtocolCircuitVerifier {
         };
 
         const proofPath = path.join(bbWorkingDirectory, PROOF_FILENAME);
-        await writeChonkProofToPath(tx.clientIvcProof, proofPath);
+        await writeChonkProofToPath(tx.chonkProof, proofPath);
 
         const verificationKeyPath = path.join(bbWorkingDirectory, VK_FILENAME);
         const verificationKey = this.getVerificationKeyData(circuit);

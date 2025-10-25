@@ -386,7 +386,7 @@ export class TXEOracleTopLevelContext implements IMiscOracle, ITxeExecutionOracl
 
     const tx = await Tx.create({
       data: publicInputs,
-      clientIvcProof: ChonkProof.empty(),
+      chonkProof: ChonkProof.empty(),
       contractClassLogFields: [],
       publicFunctionCalldata: result.publicFunctionCalldata,
     });
@@ -530,7 +530,7 @@ export class TXEOracleTopLevelContext implements IMiscOracle, ITxeExecutionOracl
 
     const tx = await Tx.create({
       data: txData,
-      clientIvcProof: ChonkProof.empty(),
+      chonkProof: ChonkProof.empty(),
       contractClassLogFields: [],
       publicFunctionCalldata: [calldataHashedValues],
     });

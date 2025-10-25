@@ -60,7 +60,7 @@ describe('Port Change', () => {
 
         // Send tx from random client
         const tx = await mockTx(1, {
-          clientIvcProof: ClientIvcProof.random(),
+          chonkProof: ClientIvcProof.random(),
         });
 
         workerClientManager.processes[clientIndex].send({ type: 'SEND_TX', tx: tx.toBuffer() });

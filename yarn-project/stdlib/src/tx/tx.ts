@@ -39,7 +39,7 @@ export class Tx extends Gossipable {
     /**
      * Proof from the private kernel circuit.
      */
-    public readonly clientIvcProof: ChonkProof,
+    public readonly chonkProof: ChonkProof,
     /**
      * Contract class log fields emitted from the tx.
      * Their order should match the order of the log hashes returned from `this.data.getNonEmptyContractClassLogsHashes`.
@@ -122,7 +122,7 @@ export class Tx extends Gossipable {
     return serializeToBuffer([
       this.txHash,
       this.data,
-      this.clientIvcProof,
+      this.chonkProof,
       serializeArrayOfBufferableToVector(this.contractClassLogFields, 1),
       serializeArrayOfBufferableToVector(this.publicFunctionCalldata, 1),
     ]);
@@ -132,7 +132,7 @@ export class Tx extends Gossipable {
     return z
       .object({
         data: PrivateKernelTailCircuitPublicInputs.schema,
-        clientIvcProof: ChonkProof.schema,
+        chonkProof: ChonkProof.schema,
         contractClassLogFields: z.array(ContractClassLogFields.schema),
         publicFunctionCalldata: z.array(HashedValues.schema),
       })
@@ -155,7 +155,7 @@ export class Tx extends Gossipable {
     return new Tx(
       fields.txHash,
       fields.data,
-      fields.clientIvcProof,
+      fields.chonkProof,
       fields.contractClassLogFields,
       fields.publicFunctionCalldata,
     );
@@ -237,7 +237,7 @@ export class Tx extends Gossipable {
       classPublishedCount: this.data.getNonEmptyContractClassLogsHashes().length,
       contractClassLogSize: this.data.getEmittedContractClassLogsLength(),
 
-      proofSize: this.clientIvcProof.proof.length,
+      proofSize: this.chonkProof.proof.length,
       size: this.toBuffer().length,
 
       feePaymentMethod:
@@ -249,7 +249,7 @@ export class Tx extends Gossipable {
   getSize() {
     return (
       this.data.getSize() +
-      this.clientIvcProof.proof.length * Fr.SIZE_IN_BYTES +
+      this.chonkProof.proof.length * Fr.SIZE_IN_BYTES +
       arraySerializedSizeOfNonEmpty(this.contractClassLogFields) +
       this.publicFunctionCalldata.reduce((accum, cd) => accum + cd.getSize(), 0)
     );
@@ -275,7 +275,7 @@ export class Tx extends Gossipable {
    */
   static clone(tx: Tx): Tx {
     const publicInputs = PrivateKernelTailCircuitPublicInputs.fromBuffer(tx.data.toBuffer());
-    const chonkProof = ChonkProof.fromBuffer(tx.clientIvcProof.toBuffer());
+    const chonkProof = ChonkProof.fromBuffer(tx.chonkProof.toBuffer());
     const contractClassLogFields = tx.contractClassLogFields.map(p => p.clone());
     const publicFunctionCalldata = tx.publicFunctionCalldata.map(cd => HashedValues.fromBuffer(cd.toBuffer()));
     const clonedTx = new Tx(tx.txHash, publicInputs, chonkProof, contractClassLogFields, publicFunctionCalldata);
@@ -292,7 +292,7 @@ export class Tx extends Gossipable {
     return Tx.from({
       txHash: (typeof args.txHash === 'string' ? TxHash.fromString(args.txHash) : args.txHash) ?? TxHash.random(),
       data: PrivateKernelTailCircuitPublicInputs.emptyWithNullifier(),
-      clientIvcProof: args.randomProof ? ChonkProof.random() : ChonkProof.empty(),
+      chonkProof: args.randomProof ? ChonkProof.random() : ChonkProof.empty(),
       contractClassLogFields: [ContractClassLogFields.random()],
       publicFunctionCalldata: [HashedValues.random()],
     });

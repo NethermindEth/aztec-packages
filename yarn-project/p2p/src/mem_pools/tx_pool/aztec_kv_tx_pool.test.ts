@@ -73,7 +73,7 @@ describe('KV TX pool', () => {
     const txs = await timesAsync(5, i => mockTx(i + 1));
     await txPool.addTxs(txs);
 
-    const expectedArchivedTxs = txs.map(tx => Tx.from({ ...tx, clientIvcProof: ClientIvcProof.empty() }));
+    const expectedArchivedTxs = txs.map(tx => Tx.from({ ...tx, chonkProof: ClientIvcProof.empty() }));
 
     // delete two txs and assert that they are properly archived
     await txPool.deleteTxs([txs[0].getTxHash(), txs[1].getTxHash()]);

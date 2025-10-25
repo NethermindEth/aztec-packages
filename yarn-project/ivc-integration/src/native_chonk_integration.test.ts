@@ -1,4 +1,4 @@
-import { BB_RESULT, verifyClientIvcProof } from '@aztec/bb-prover';
+import { BB_RESULT, verifyChonkProof } from '@aztec/bb-prover';
 import { createLogger } from '@aztec/foundation/log';
 
 import { jest } from '@jest/globals';
@@ -33,7 +33,7 @@ describe('Client IVC Integration', () => {
 
     await proveChonk(bbBinaryPath, bbWorkingDirectory, witnessStack, bytecodes, vks, logger);
 
-    const verifyResult = await verifyClientIvcProof(
+    const verifyResult = await verifyChonkProof(
       bbBinaryPath,
       bbWorkingDirectory.concat('/proof'),
       bbWorkingDirectory.concat('/vk'),
@@ -55,7 +55,7 @@ describe('Client IVC Integration', () => {
 
     await proveChonk(bbBinaryPath, bbWorkingDirectory, witnessStack, bytecodes, vks, logger);
 
-    const verifyResult = await verifyClientIvcProof(
+    const verifyResult = await verifyChonkProof(
       bbBinaryPath,
       bbWorkingDirectory.concat('/proof'),
       bbWorkingDirectory.concat('/vk'),
