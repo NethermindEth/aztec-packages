@@ -1,5 +1,5 @@
 ---
-title: Referemce
+title: Reference
 description: Comprehensive reference for the Aztec wallet command-line interface (CLI).
 tags: [sandbox, wallet, cli]
 keywords: [wallet, cli wallet]

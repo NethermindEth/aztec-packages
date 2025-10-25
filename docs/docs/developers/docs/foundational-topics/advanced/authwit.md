@@ -6,6 +6,8 @@ keywords: [authwit, authentication witness, accounts]
 description: Learn about Aztec's Authentication Witness scheme that enables secure third-party actions on behalf of users, providing a privacy-preserving alternative to traditional token approvals.
 ---
 
+<!-- NOTE: combine with the "how to guide" AKA the framework description page... -->
+
 import Image from "@theme/IdealImage";
 
 Authentication Witness is a scheme for authenticating actions on Aztec, so users can allow third-parties (eg protocols or other users) to execute an action on their behalf.

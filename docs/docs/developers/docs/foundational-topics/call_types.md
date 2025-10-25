@@ -5,6 +5,8 @@ tags: [calls, contracts, execution]
 description: Understand the different types of contract calls in Aztec, including private and public execution modes, and how they compare to Ethereum's call types.
 ---
 
+<!-- NOTE: Put inside the "calling other contract" page in aztec.nr unless we need for aztec.js -->
+
 ## What is a Call
 
 We say that a smart contract is called when one of its functions is invoked and its code is run. This means there'll be:

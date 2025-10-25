@@ -385,3 +385,55 @@
 [[redirects]]
     from = "/the_aztec_network/reference/useful_commands"
     to = "/the_aztec_network/operation/sequencer_management/useful_commands"
+
+[[redirects]]
+    from = "/concepts/*"
+    to = "/foundational-topics"
+
+[[redirects]]
+    from = "/guides/local_env/sandbox"
+    to = "/getting-started"
+
+[[redirects]]
+    from = "/guides/local_env/installing_noir_lsp"
+    to = "/aztec-nr/installation"
+
+[[redirects]]
+    from = "/guides/local_env/how_to_debug"
+    to = "/aztec-nr/debugging"
+
+[[redirects]]
+    from = "/guides/smart_contracts/*"
+    to = "/aztec-nr"
+
+[[redirects]]
+    from = "/guides/js_apps/*"
+    to = "/aztec-js"
+
+[[redirects]]
+    from = "/reference/environment_reference/sandbox_reference"
+    to = "/aztec-cli/sandbox_reference"
+
+[[redirects]]
+    from = "/reference/environment_reference/cli_reference"
+    to = "/aztec-cli/cli_reference"
+
+[[redirects]]
+    from = "/reference/environment_reference/cli_wallet"
+    to = "/wallet-cli"
+
+[[redirects]]
+    from = "/reference/smart_contract_reference/*"
+    to = "/aztec-nr"
+
+[[redirects]]
+    from = "/reference/considerations/*"
+    to = "/resources/considerations/*"
+
+[[redirects]]
+    from = "/glossary"
+    to = "/resources/glossary"
+
+[[redirects]]
+    from = "/migration_notes"
+    to = "/resources/migration_notes"

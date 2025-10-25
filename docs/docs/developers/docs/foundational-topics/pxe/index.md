@@ -7,6 +7,8 @@ keywords: [pxe, private execution environment]
 importance: 1
 ---
 
+<!-- NOTE: combine with state_management -->
+
 import Image from "@theme/IdealImage";
 
 This page describes the Private Execution Environment (PXE, pronounced "pixie"), a client-side library for the execution of private operations. It is a TypeScript library that can be run within Node.js, inside wallet software or a browser.

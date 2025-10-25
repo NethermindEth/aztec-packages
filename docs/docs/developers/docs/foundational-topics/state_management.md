@@ -1,11 +1,37 @@
 ---
-title: Notes (UTXOs)
-sidebar_position: 5
-tags: [notes, storage]
-description: Understand how notes work in Aztec as the fundamental unit of private state, including their lifecycle, storage, and consumption.
+title: State Management
+description: How are storage slots derived for public and private state
+sidebar_position: 0
+tags: [protocol, storage]
 ---
 
-import Image from "@theme/IdealImage";
+<!-- Include about execution envs and pub and priv state plus notes etc -->
+
+In Aztec, private data and public data are stored in two trees; a public data tree and a note hashes tree.
+
+These trees have in common that they store state for _all_ accounts on the Aztec network directly as leaves. This is different from Ethereum, where a state trie contains smaller tries that hold the individual accounts' storage.
+
+It also means that we need to be careful about how we allocate storage to ensure that they don't collide! We say that storage should be _siloed_ to its contract. The exact way of siloing differs a little for public and private storage. Which we will see in the following sections.
+
+Aztec has a hybrid public/private state model. Aztec contract developers can specify which data is public and which data is private, as well as the functions that can operate on that data.
+
+## Public State
+
+Aztec has public state that will be familiar to developers coming that have worked on other blockchains. Public state is transparent and is managed by the associated smart contract logic.
+
+Internal to the Aztec network, public state is stored and updated by the sequencer. The sequencer executes state transitions, generates proofs of correct execution (or delegates proof generation to the prover network), and publishes the associated data to Ethereum.
+
+## Private State
+
+Private state must be treated differently from public state. Private state is encrypted and therefore is "owned" by a user or a set of users (via shared secrets) that are able to decrypt the state.
+
+Private state is represented in an append-only database since updating a record would leak information about the transaction graph.
+
+The act of "deleting" a private state variable can be represented by adding an associated nullifier to a nullifier set. The nullifier is generated such that, without knowing the decryption key of the owner, an observer cannot link a state record with a nullifier.
+
+Modification of state variables can be emulated by nullifying the state record and creating a new record to represent the variable. Private state has an intrinsic UTXO structure.
+
+## Notes
 
 The [state model page](./state_model.md) explains that there is a difference between public and private state. Private state uses UTXOs (unspent transaction ouputs), also known as notes. This page introduces the concept of UTXOs and how notes are abstracted on Aztec.
 
