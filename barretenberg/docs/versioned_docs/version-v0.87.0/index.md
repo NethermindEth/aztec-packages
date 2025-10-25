@@ -7,7 +7,7 @@ Barretenberg is a C++ library that implements various Zero-Knowledge Succinct No
 - **Multiple Proof Systems**: Supports several zkSNARK implementations including:
   - **UltraPlonk**: A legacy version of PLONK
   - **UltraHonk**: A newer, more efficient PLONKish proving system
-  - **Chonk**: A proving scheme optimized for [Aztec](https://aztec.network) client-side smart contract execution
+  - **ClientIVC**: A proving scheme optimized for [Aztec](https://aztec.network) client-side smart contract execution
 
 - **Recursive Proof Verification**: Ability to verify proofs within proofs
 
