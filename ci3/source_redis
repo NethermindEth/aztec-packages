@@ -88,13 +88,9 @@ function redis_getz {
   hex=$(redis_cli --raw GET "$1" | head -c -1 | xxd -p)
   if [ -z "$hex" ]; then
     echo "Key not found."
-    return 1
   fi
   if [[ "${hex:0:4}" == "1f8b" ]]; then
-    # Try to gunzip, fall back to raw if corrupted
-    if ! echo "$hex" | xxd -r -p | gunzip 2>/dev/null; then
-      echo "$hex" | xxd -r -p
-    fi
+    echo "$hex" | xxd -r -p | gunzip
   else
     echo "$hex" | xxd -r -p
   fi
