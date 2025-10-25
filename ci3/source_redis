@@ -67,11 +67,14 @@ function redis_setexz {
 function redis_setexz_with_disk {
   local key="$1"
   local expire="$2"
+  local data=$(cat | gzip)
 
+  # Write to Redis
+  echo "$data" | redis_cli -x SETEX "$key" "$expire" &>/dev/null
+
+  # Also transfer to bastion disk in CI (async)
   if [ "${CI:-0}" -eq 1 ]; then
-    cat | gzip | tee >(redis_cli -x SETEX "$key" "$expire" &>/dev/null) | disk_log_transfer "$key"
-  else
-    cat | gzip | redis_cli -x SETEX "$key" "$expire" &>/dev/null
+    echo "$data" | disk_log_transfer "$key" &
   fi
 }
 
