@@ -707,7 +707,7 @@ export class PXE {
 
         const {
           publicInputs,
-          clientIvcProof,
+          chonkProof,
           executionSteps,
           timings: { proving } = {},
         } = await this.#prove(txRequest, this.proofCreator, privateExecutionResult, {
@@ -735,7 +735,7 @@ export class PXE {
 
         this.log.debug(`Proving completed in ${totalTime}ms`, { timings });
 
-        const txProvingResult = new TxProvingResult(privateExecutionResult, publicInputs, clientIvcProof!, {
+        const txProvingResult = new TxProvingResult(privateExecutionResult, publicInputs, chonkProof!, {
           timings,
           nodeRPCCalls: contractFunctionSimulator?.getStats().nodeRPCCalls,
         });

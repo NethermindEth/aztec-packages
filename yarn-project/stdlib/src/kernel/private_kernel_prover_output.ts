@@ -48,7 +48,7 @@ export interface PrivateKernelExecutionProofOutput<
    * which recursively verifies it through the "private tx base" or the "public chonk verifier" circuit.*/
   chonkProof: ChonkProof;
   /**
-   * The trace the clientIvcProof corresponds to.
+   * The trace the chonkProof corresponds to.
    * A trace of app circuits interleaved with private kernel circuits.
    * If simulate is ran with profiling mode, also includes gate counts.
    */
