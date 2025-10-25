@@ -1,18 +1,21 @@
 # Disk-based logging system with synchronous SSH transfer to bastion.
 # Logs are written to /logs-disk on bastion via SCP.
 
-# Transfer log file to bastion via SCP (synchronous)
-# Usage: disk_log_transfer <key> <local_file>
+# Transfer log to bastion via SCP (accepts stdin)
+# Usage: cat file | disk_log_transfer <key>
 function disk_log_transfer {
   local key="$1"
-  local local_file="$2"
+  local tmpfile="/tmp/disk_log_$$_${key}.gz"
+
+  # Save stdin to temp file
+  cat > "$tmpfile"
 
   # Transfer via SCP using existing SSH multiplexing (runs in background)
   scp -F "${ci3}/aws/build_instance_ssh_config" \
       -o ControlMaster=auto \
       -o ControlPath=/tmp/ssh_mux_%h_%p_%r \
       -o ConnectTimeout=5 \
-      "${local_file}" \
+      "${tmpfile}" \
       "ci-bastion.aztecprotocol.com:/logs-disk/${key}.log.gz" &>/dev/null &
 }
 

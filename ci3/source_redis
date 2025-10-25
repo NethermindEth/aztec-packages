@@ -67,21 +67,12 @@ function redis_setexz {
 function redis_setexz_with_disk {
   local key="$1"
   local expire="$2"
-  local tmpfile="/tmp/redis_log_$$_${key}.gz"
 
-  # Save gzipped data to temp file
-  cat | gzip > "$tmpfile"
-
-  # Write to Redis
-  cat "$tmpfile" | redis_cli -x SETEX "$key" "$expire" &>/dev/null
-
-  # Also transfer to bastion disk in CI (async)
   if [ "${CI:-0}" -eq 1 ]; then
-    disk_log_transfer "$key" "$tmpfile"
+    cat | gzip | tee >(redis_cli -x SETEX "$key" "$expire" &>/dev/null) | disk_log_transfer "$key"
+  else
+    cat | gzip | redis_cli -x SETEX "$key" "$expire" &>/dev/null
   fi
-
-  # Note: temp file will be cleaned up when SCP completes (running in background)
-  # We could add cleanup but it's /tmp and will be cleared on reboot
 }
 
 function redis_getz {
