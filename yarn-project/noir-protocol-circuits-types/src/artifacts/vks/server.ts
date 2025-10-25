@@ -25,6 +25,7 @@ import {
 } from '@aztec/constants';
 import { VerificationKeyData } from '@aztec/stdlib/vks';
 
+import PublicTube from '../../../artifacts/chonk_verifier_public.json' with { type: 'json' };
 import ParityBase from '../../../artifacts/parity_base.json' with { type: 'json' };
 import ParityRoot from '../../../artifacts/parity_root.json' with { type: 'json' };
 import BlockMergeRollup from '../../../artifacts/rollup_block_merge.json' with { type: 'json' };
@@ -41,7 +42,6 @@ import RootRollup from '../../../artifacts/rollup_root.json' with { type: 'json'
 import PrivateTxBaseRollup from '../../../artifacts/rollup_tx_base_private.json' with { type: 'json' };
 import PublicTxBaseRollup from '../../../artifacts/rollup_tx_base_public.json' with { type: 'json' };
 import TxMergeRollup from '../../../artifacts/rollup_tx_merge.json' with { type: 'json' };
-import PublicTube from '../../../artifacts/tube_public.json' with { type: 'json' };
 import { PrivateKernelResetVkIndexes } from '../../private_kernel_reset_vks.js';
 import { abiToVKData } from '../../utils/vk_json.js';
 import type { ProtocolCircuitName, ServerProtocolCircuitName } from '../types.js';
