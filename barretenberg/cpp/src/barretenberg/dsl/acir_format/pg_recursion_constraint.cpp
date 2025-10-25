@@ -151,8 +151,7 @@ void mock_sumcheck_ivc_accumulation(const std::shared_ptr<SumcheckChonk>& ivc,
     using Commitment = SumcheckChonk::Commitment;
 
     // Initialize verifier accumulator with proper structure
-    ivc->recursive_verifier_native_accum.challenge =
-        std::vector<FF>(SumcheckChonk::Flavor::VIRTUAL_LOG_N, FF::zero());
+    ivc->recursive_verifier_native_accum.challenge = std::vector<FF>(SumcheckChonk::Flavor::VIRTUAL_LOG_N, FF::zero());
     ivc->recursive_verifier_native_accum.non_shifted_evaluation = FF::zero();
     ivc->recursive_verifier_native_accum.shifted_evaluation = FF::zero();
     ivc->recursive_verifier_native_accum.non_shifted_commitment = Commitment::one();

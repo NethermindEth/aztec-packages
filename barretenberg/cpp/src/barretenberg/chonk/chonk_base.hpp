@@ -19,7 +19,7 @@ namespace bb {
  * used polymorphically in the API.
  */
 class IVCBase {
-// CHONK: "Client Honk" - An UltraHonk variant with incremental folding and delayed non-native arithmetic.
+    // CHONK: "Client Honk" - An UltraHonk variant with incremental folding and delayed non-native arithmetic.
   public:
     using ClientCircuit = MegaCircuitBuilder;
     using MegaVerificationKey = MegaFlavor::VerificationKey;

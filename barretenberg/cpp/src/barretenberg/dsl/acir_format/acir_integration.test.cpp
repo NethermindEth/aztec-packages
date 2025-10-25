@@ -1,7 +1,7 @@
 #include "barretenberg/chonk/sumcheck_chonk.hpp"
 #ifndef __wasm__
-#include "barretenberg/circuit_checker/circuit_checker.hpp"
 #include "barretenberg/chonk/private_execution_steps.hpp"
+#include "barretenberg/circuit_checker/circuit_checker.hpp"
 #include "barretenberg/common/streams.hpp"
 #include "barretenberg/dsl/acir_format/acir_to_constraint_buf.hpp"
 #include "barretenberg/dsl/acir_format/pg_recursion_constraint.hpp"

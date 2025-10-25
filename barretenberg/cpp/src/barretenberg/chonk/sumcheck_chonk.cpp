@@ -354,9 +354,8 @@ SumcheckChonk::QUEUE_TYPE SumcheckChonk::get_queue_type() const
  */
 void SumcheckChonk::accumulate(ClientCircuit& circuit, const std::shared_ptr<MegaVerificationKey>& precomputed_vk)
 {
-    BB_ASSERT_LT(num_circuits_accumulated,
-                 num_circuits,
-                 "SumcheckChonk: Attempting to accumulate more circuits than expected.");
+    BB_ASSERT_LT(
+        num_circuits_accumulated, num_circuits, "SumcheckChonk: Attempting to accumulate more circuits than expected.");
 
     BB_ASSERT(precomputed_vk != nullptr, "SumcheckChonk::accumulate - VK expected for the provided circuit");
 
@@ -717,7 +716,7 @@ SumcheckChonk::VerificationKey SumcheckChonk::get_vk() const
 
 #ifndef NDEBUG
 void SumcheckChonk::update_native_verifier_accumulator(const VerifierInputs& queue_entry,
-                                                           const std::shared_ptr<Transcript>& verifier_transcript)
+                                                       const std::shared_ptr<Transcript>& verifier_transcript)
 {
     auto verifier_inst = std::make_shared<VerifierInstance>(queue_entry.honk_vk);
 

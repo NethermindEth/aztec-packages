@@ -122,7 +122,7 @@ ChonkProve::Response ChonkProve::execute(BBApiRequest& request) &&
     }
 
     response.proof = SumcheckChonk::Proof{ .mega_proof = std::move(proof.mega_proof),
-                                               .goblin_proof = std::move(proof.goblin_proof) };
+                                           .goblin_proof = std::move(proof.goblin_proof) };
 
     request.ivc_in_progress.reset();
     request.ivc_stack_depth = 0;
@@ -151,8 +151,7 @@ static std::shared_ptr<SumcheckChonk::ProverInstance> get_acir_program_prover_in
     return std::make_shared<SumcheckChonk::ProverInstance>(builder);
 }
 
-ChonkComputeStandaloneVk::Response ChonkComputeStandaloneVk::execute(
-    [[maybe_unused]] const BBApiRequest& request) &&
+ChonkComputeStandaloneVk::Response ChonkComputeStandaloneVk::execute([[maybe_unused]] const BBApiRequest& request) &&
 {
     BB_BENCH_NAME(MSGPACK_SCHEMA_NAME);
     info("ChonkComputeStandaloneVk - deriving VK for circuit '", circuit.name, "'");
@@ -161,8 +160,7 @@ ChonkComputeStandaloneVk::Response ChonkComputeStandaloneVk::execute(
 
     acir_format::AcirProgram program{ constraint_system, /*witness=*/{} };
     std::shared_ptr<SumcheckChonk::ProverInstance> prover_instance = get_acir_program_prover_instance(program);
-    auto verification_key =
-        std::make_shared<SumcheckChonk::MegaVerificationKey>(prover_instance->get_precomputed());
+    auto verification_key = std::make_shared<SumcheckChonk::MegaVerificationKey>(prover_instance->get_precomputed());
 
     return { .bytes = to_buffer(*verification_key), .fields = verification_key->to_field_elements() };
 }
@@ -177,11 +175,10 @@ ChonkComputeIvcVk::Response ChonkComputeIvcVk::execute(BB_UNUSED const BBApiRequ
     }.execute();
 
     auto mega_vk = from_buffer<SumcheckChonk::MegaVerificationKey>(standalone_vk_response.bytes);
-    SumcheckChonk::VerificationKey chonk_vk{ .mega =
-                                                    std::make_shared<SumcheckChonk::MegaVerificationKey>(mega_vk),
-                                                .eccvm = std::make_shared<SumcheckChonk::ECCVMVerificationKey>(),
-                                                .translator =
-                                                    std::make_shared<SumcheckChonk::TranslatorVerificationKey>() };
+    SumcheckChonk::VerificationKey chonk_vk{ .mega = std::make_shared<SumcheckChonk::MegaVerificationKey>(mega_vk),
+                                             .eccvm = std::make_shared<SumcheckChonk::ECCVMVerificationKey>(),
+                                             .translator =
+                                                 std::make_shared<SumcheckChonk::TranslatorVerificationKey>() };
     Response response;
     response.bytes = to_buffer(chonk_vk);
 
@@ -190,8 +187,7 @@ ChonkComputeIvcVk::Response ChonkComputeIvcVk::execute(BB_UNUSED const BBApiRequ
     return response;
 }
 
-ChonkCheckPrecomputedVk::Response ChonkCheckPrecomputedVk::execute(
-    [[maybe_unused]] const BBApiRequest& request) &&
+ChonkCheckPrecomputedVk::Response ChonkCheckPrecomputedVk::execute([[maybe_unused]] const BBApiRequest& request) &&
 {
     BB_BENCH_NAME(MSGPACK_SCHEMA_NAME);
     acir_format::AcirProgram program{ acir_format::circuit_buf_to_acir_format(std::move(circuit.bytecode)),
@@ -206,8 +202,7 @@ ChonkCheckPrecomputedVk::Response ChonkCheckPrecomputedVk::execute(
     }
 
     // Deserialize directly from buffer
-    auto precomputed_vk =
-        from_buffer<std::shared_ptr<SumcheckChonk::MegaVerificationKey>>(circuit.verification_key);
+    auto precomputed_vk = from_buffer<std::shared_ptr<SumcheckChonk::MegaVerificationKey>>(circuit.verification_key);
 
     Response response;
     response.valid = true;

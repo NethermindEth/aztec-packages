@@ -309,8 +309,8 @@ void build_constraints(Builder& builder, AcirProgram& program, const ProgramMeta
         // - HONK + AVM recursion constraints (Public Base Rollup)
         // - HONK recursion constraints
         // - AVM recursion constraints
-        // However, as mock protocol circuits use Chonk + AVM (mock Public Base Rollup), instead of throwing an assert we
-        // return a vinfo for the case of Chonk + AVM
+        // However, as mock protocol circuits use Chonk + AVM (mock Public Base Rollup), instead of throwing an assert
+        // we return a vinfo for the case of Chonk + AVM
         BB_ASSERT_EQ(has_pg_recursion_constraints,
                      false,
                      "Invalid circuit: pg recursion constraints are present with UltraBuilder.");
@@ -323,9 +323,10 @@ void build_constraints(Builder& builder, AcirProgram& program, const ProgramMeta
             true,
             "Invalid circuit: honk, chonk, or avm recursion constraints present but the circuit is not recursive.");
         if (has_chonk_recursion_constraints && has_avm_recursion_constraints) {
-            vinfo("WARNING: both chonk and avm recursion constraints are present. While we support this combination, we "
-                  "expect to see it only in a mock "
-                  "circuit.");
+            vinfo(
+                "WARNING: both chonk and avm recursion constraints are present. While we support this combination, we "
+                "expect to see it only in a mock "
+                "circuit.");
         }
 
         // Container for data to be propagated
@@ -617,9 +618,9 @@ void process_pg_recursion_constraints(MegaCircuitBuilder& builder,
 
 [[nodiscard("IPA claim and Pairing points should be accumulated")]] HonkRecursionConstraintsOutput<Builder>
 process_chonk_recursion_constraints(Builder& builder,
-                                   AcirFormat& constraint_system,
-                                   bool has_valid_witness_assignments,
-                                   GateCounter<Builder>& gate_counter)
+                                    AcirFormat& constraint_system,
+                                    bool has_valid_witness_assignments,
+                                    GateCounter<Builder>& gate_counter)
 {
     HonkRecursionConstraintsOutput<Builder> output;
     // Add recursion constraints

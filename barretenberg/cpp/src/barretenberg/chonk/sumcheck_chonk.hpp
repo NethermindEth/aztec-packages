@@ -33,7 +33,7 @@ namespace bb {
  *
  */
 class SumcheckChonk : public IVCBase {
-// CHONK: "Client Honk" - An UltraHonk variant with incremental folding and delayed non-native arithmetic.
+    // CHONK: "Client Honk" - An UltraHonk variant with incremental folding and delayed non-native arithmetic.
 
   public:
     using Flavor = MegaFlavor;
