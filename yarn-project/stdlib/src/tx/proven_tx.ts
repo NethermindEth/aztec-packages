@@ -4,7 +4,7 @@ import type { FieldsOf } from '@aztec/foundation/types';
 import { z } from 'zod';
 
 import { PrivateKernelTailCircuitPublicInputs } from '../kernel/private_kernel_tail_circuit_public_inputs.js';
-import { ClientIvcProof } from '../proofs/client_ivc_proof.js';
+import { ChonkProof } from '../proofs/chonk_proof.js';
 import type { OffchainEffect } from './offchain_effect.js';
 import {
   PrivateExecutionResult,
@@ -18,7 +18,7 @@ export class TxProvingResult {
   constructor(
     public privateExecutionResult: PrivateExecutionResult,
     public publicInputs: PrivateKernelTailCircuitPublicInputs,
-    public clientIvcProof: ClientIvcProof,
+    public clientIvcProof: ChonkProof,
     public stats?: ProvingStats,
   ) {}
 
@@ -42,7 +42,7 @@ export class TxProvingResult {
       .object({
         privateExecutionResult: PrivateExecutionResult.schema,
         publicInputs: PrivateKernelTailCircuitPublicInputs.schema,
-        clientIvcProof: ClientIvcProof.schema,
+        clientIvcProof: ChonkProof.schema,
         timings: optional(ProvingTimingsSchema),
       })
       .transform(TxProvingResult.from);
@@ -56,7 +56,7 @@ export class TxProvingResult {
     return new TxProvingResult(
       await PrivateExecutionResult.random(),
       PrivateKernelTailCircuitPublicInputs.empty(),
-      ClientIvcProof.empty(),
+      ChonkProof.empty(),
     );
   }
 }

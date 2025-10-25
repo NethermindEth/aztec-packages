@@ -5,7 +5,7 @@
 // =====================
 #include "barretenberg/dsl/acir_format/mock_verifier_inputs.hpp"
 #include "barretenberg/dsl/acir_format/recursion_constraint.hpp"
-#include "barretenberg/stdlib/client_ivc_verifier/client_ivc_recursive_verifier.hpp"
+#include "barretenberg/stdlib/chonk_verifier/chonk_recursive_verifier.hpp"
 #include "barretenberg/stdlib/primitives/bigfield/bigfield.hpp"
 #include "proof_surgeon.hpp"
 
@@ -39,10 +39,10 @@ static void create_dummy_vkey_and_proof(Builder& builder,
                                         const std::vector<field_ct>& key_fields,
                                         const std::vector<field_ct>& proof_fields)
 {
-    using ClientIVCRecursiveVerifier = stdlib::recursion::honk::ClientIVCRecursiveVerifier;
+    using ChonkRecursiveVerifier = stdlib::recursion::honk::ChonkRecursiveVerifier;
     using IO = stdlib::recursion::honk::HidingKernelIO<Builder>;
 
-    BB_ASSERT_EQ(proof_size, ClientIVCRecursiveVerifier::StdlibProof::PROOF_LENGTH_WITHOUT_PUB_INPUTS());
+    BB_ASSERT_EQ(proof_size, ChonkRecursiveVerifier::StdlibProof::PROOF_LENGTH_WITHOUT_PUB_INPUTS());
 
     size_t num_inner_public_inputs = public_inputs_size - IO::PUBLIC_INPUTS_SIZE;
     uint32_t pub_inputs_offset = MegaZKFlavor::has_zero_row ? 1 : 0;
@@ -59,12 +59,12 @@ static void create_dummy_vkey_and_proof(Builder& builder,
         offset++;
     }
 
-    // Generate dummy CIVC proof
-    bb::HonkProof civc_proof = create_mock_civc_proof<Builder>(num_inner_public_inputs);
+    // Generate dummy Chonk proof
+    bb::HonkProof chonk_proof = create_mock_chonk_proof<Builder>(num_inner_public_inputs);
 
-    // Set CIVC proof in builder
+    // Set Chonk proof in builder
     offset = 0;
-    for (auto& proof_element : civc_proof) {
+    for (auto& proof_element : chonk_proof) {
         builder.set_variable(proof_fields[offset].get_witness_index(), proof_element);
         offset++;
     }
@@ -73,7 +73,7 @@ static void create_dummy_vkey_and_proof(Builder& builder,
 }
 
 /**
- * @brief Add constraints associated with recursive verification of an CIVC proof
+ * @brief Add constraints associated with recursive verification of a Chonk proof
  *
  * @param builder
  * @param input
@@ -82,16 +82,16 @@ static void create_dummy_vkey_and_proof(Builder& builder,
  * @return HonkRecursionConstraintOutput {pairing agg object, ipa claim, ipa proof}
  */
 [[nodiscard("IPA claim and Pairing points should be accumulated")]] HonkRecursionConstraintOutput<Builder>
-create_civc_recursion_constraints(Builder& builder,
-                                  const RecursionConstraint& input,
-                                  bool has_valid_witness_assignments)
+create_chonk_recursion_constraints(Builder& builder,
+                                   const RecursionConstraint& input,
+                                   bool has_valid_witness_assignments)
 {
-    using ClientIVCRecursiveVerifier = stdlib::recursion::honk::ClientIVCRecursiveVerifier;
-    using RecursiveVKAndHash = ClientIVCRecursiveVerifier::RecursiveVKAndHash;
-    using VerificationKey = ClientIVCRecursiveVerifier::RecursiveVK;
+    using ChonkRecursiveVerifier = stdlib::recursion::honk::ChonkRecursiveVerifier;
+    using RecursiveVKAndHash = ChonkRecursiveVerifier::RecursiveVKAndHash;
+    using VerificationKey = ChonkRecursiveVerifier::RecursiveVK;
     using IO = stdlib::recursion::honk::HidingKernelIO<Builder>;
 
-    BB_ASSERT_EQ(input.proof_type, PROOF_TYPE::CIVC);
+    BB_ASSERT_EQ(input.proof_type, PROOF_TYPE::CHONK);
 
     // Reconstruct proof indices from proof and public inputs
     std::vector<uint32_t> proof_indices =
@@ -110,13 +110,13 @@ create_civc_recursion_constraints(Builder& builder,
             builder, proof_size_without_pub_inputs, total_pub_inputs_size, key_fields, proof_fields);
     }
 
-    // Recursively verify CIVC proof
+    // Recursively verify Chonk proof
     auto mega_vk = std::make_shared<VerificationKey>(key_fields);
     auto mega_vk_and_hash = std::make_shared<RecursiveVKAndHash>(mega_vk, vk_hash);
-    ClientIVCRecursiveVerifier::StdlibProof stdlib_proof(proof_fields, input.public_inputs.size());
+    ChonkRecursiveVerifier::StdlibProof stdlib_proof(proof_fields, input.public_inputs.size());
 
-    ClientIVCRecursiveVerifier verifier(&builder, mega_vk_and_hash);
-    ClientIVCRecursiveVerifier::Output verification_output = verifier.verify(stdlib_proof);
+    ChonkRecursiveVerifier verifier(&builder, mega_vk_and_hash);
+    ChonkRecursiveVerifier::Output verification_output = verifier.verify(stdlib_proof);
 
     // Construct output
     HonkRecursionConstraintOutput<Builder> output;

@@ -88,7 +88,7 @@ export type ClientCircuitName =
 export type ServerCircuitName =
   | 'parity-base'
   | 'parity-root'
-  | 'tube-public'
+  | 'chonk-verifier-public'
   | 'rollup-tx-base-private'
   | 'rollup-tx-base-public'
   | 'rollup-tx-merge'

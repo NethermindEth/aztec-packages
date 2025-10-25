@@ -39,7 +39,7 @@ import {
   convertPrivateTxBaseRollupOutputsFromWitnessMap,
   convertPrivateTxBaseRollupPrivateInputsToWitnessMap,
   convertPublicTubeOutputsFromWitnessMap,
-  convertPublicTubePrivateInputsToWitnessMap,
+  convertPublicChonkVerifierPrivateInputsToWitnessMap,
   convertPublicTxBaseRollupOutputsFromWitnessMap,
   convertPublicTxBaseRollupPrivateInputsToWitnessMap,
   convertRootRollupOutputsFromWitnessMap,
@@ -77,8 +77,8 @@ import {
   CheckpointRootRollupPrivateInputs,
   CheckpointRootSingleBlockRollupPrivateInputs,
   type PrivateTxBaseRollupPrivateInputs,
-  PublicTubePrivateInputs,
-  PublicTubePublicInputs,
+  PublicChonkVerifierPrivateInputs,
+  PublicChonkVerifierPublicInputs,
   PublicTxBaseRollupPrivateInputs,
   type RootRollupPrivateInputs,
   type RootRollupPublicInputs,
@@ -202,16 +202,16 @@ export class BBNativeRollupProver implements ServerCircuitProver {
     return proofAndVk;
   }
 
-  public async getPublicTubeProof(
-    inputs: PublicTubePrivateInputs,
-  ): Promise<PublicInputsAndRecursiveProof<PublicTubePublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>> {
+  public async getPublicChonkVerifierProof(
+    inputs: PublicChonkVerifierPrivateInputs,
+  ): Promise<PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>> {
     const artifactName = 'PublicTube';
 
     const { circuitOutput, proof } = await this.createRecursiveProof(
       inputs,
       artifactName,
       NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH,
-      convertPublicTubePrivateInputsToWitnessMap,
+      convertPublicChonkVerifierPrivateInputsToWitnessMap,
       convertPublicTubeOutputsFromWitnessMap,
     );
 

@@ -17,8 +17,8 @@ using Builder = bb::UltraCircuitBuilder; // Builder is always Ultra
 using namespace bb;
 
 [[nodiscard("IPA claim and Pairing points should be accumulated")]] HonkRecursionConstraintOutput<Builder>
-create_civc_recursion_constraints(Builder& builder,
-                                  const RecursionConstraint& input,
-                                  bool has_valid_witness_assignments);
+create_chonk_recursion_constraints(Builder& builder,
+                                   const RecursionConstraint& input,
+                                   bool has_valid_witness_assignments);
 
 } // namespace acir_format

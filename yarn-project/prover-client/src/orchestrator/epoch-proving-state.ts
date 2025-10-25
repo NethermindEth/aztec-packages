@@ -15,7 +15,7 @@ import {
   CheckpointMergeRollupPrivateInputs,
   CheckpointPaddingRollupPrivateInputs,
   CheckpointRollupPublicInputs,
-  PublicTubePublicInputs,
+  PublicChonkVerifierPublicInputs,
   RootRollupPrivateInputs,
   type RootRollupPublicInputs,
 } from '@aztec/stdlib/rollup';
@@ -60,7 +60,7 @@ export class EpochProvingState {
   // Map from tx hash to tube proof promise. Used when kickstarting tube proofs before tx processing.
   public readonly cachedTubeProofs = new Map<
     string,
-    Promise<PublicInputsAndRecursiveProof<PublicTubePublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>>
+    Promise<PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>>
   >();
 
   constructor(

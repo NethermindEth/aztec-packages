@@ -52,7 +52,7 @@ export function mapProtocolArtifactNameToCircuitName(artifact: ProtocolArtifact)
     case 'ParityRootArtifact':
       return 'parity-root';
     case 'PublicTube':
-      return 'tube-public';
+      return 'chonk-verifier-public';
     case 'PrivateTxBaseRollupArtifact':
       return 'rollup-tx-base-private';
     case 'PublicTxBaseRollupArtifact':

@@ -34,8 +34,8 @@ import {
   CheckpointConstantData,
   CheckpointRootSingleBlockRollupPrivateInputs,
   PrivateTxBaseRollupPrivateInputs,
-  PublicTubePrivateInputs,
-  PublicTubePublicInputs,
+  PublicChonkVerifierPrivateInputs,
+  PublicChonkVerifierPublicInputs,
   RootRollupPublicInputs,
 } from '@aztec/stdlib/rollup';
 import type { CircuitName } from '@aztec/stdlib/stats';
@@ -57,7 +57,7 @@ import {
   buildBlockHeaderFromTxs,
   buildHeaderFromCircuitOutputs,
   getLastSiblingPath,
-  getPublicTubePrivateInputsFromTx,
+  getPublicChonkVerifierPrivateInputsFromTx,
   getRootTreeSiblingPath,
   getSubtreeSiblingPath,
   getTreeSnapshot,
@@ -361,10 +361,10 @@ export class ProvingOrchestrator implements EpochProver {
     const publicTxs = txs.filter(tx => tx.data.forPublic);
     for (const tx of publicTxs) {
       const txHash = tx.getTxHash().toString();
-      const privateInputs = getPublicTubePrivateInputsFromTx(tx, this.proverId.toField());
+      const privateInputs = getPublicChonkVerifierPrivateInputsFromTx(tx, this.proverId.toField());
       const tubeProof =
         promiseWithResolvers<
-          PublicInputsAndRecursiveProof<PublicTubePublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>
+          PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>
         >();
       logger.debug(`Starting tube circuit for tx ${txHash}`);
       this.doEnqueueTube(txHash, privateInputs, proof => {
@@ -732,7 +732,7 @@ export class ProvingOrchestrator implements EpochProver {
     const txHash = txProvingState.processedTx.hash.toString();
     NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH;
     const handleResult = (
-      result: PublicInputsAndRecursiveProof<PublicTubePublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>,
+      result: PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>,
     ) => {
       logger.debug(`Got tube proof for tx index: ${txIndex}`, { txHash });
       txProvingState.setPublicTubeProof(result);
@@ -747,14 +747,14 @@ export class ProvingOrchestrator implements EpochProver {
     }
 
     logger.debug(`Enqueuing tube circuit for tx index: ${txIndex}`);
-    this.doEnqueueTube(txHash, txProvingState.getPublicTubePrivateInputs(), handleResult);
+    this.doEnqueueTube(txHash, txProvingState.getPublicChonkVerifierPrivateInputs(), handleResult);
   }
 
   private doEnqueueTube(
     txHash: string,
-    inputs: PublicTubePrivateInputs,
+    inputs: PublicChonkVerifierPrivateInputs,
     handler: (
-      result: PublicInputsAndRecursiveProof<PublicTubePublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>,
+      result: PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>,
     ) => void,
     provingState: EpochProvingState | BlockProvingState = this.provingState!,
   ) {
@@ -767,12 +767,12 @@ export class ProvingOrchestrator implements EpochProver {
       provingState,
       wrapCallbackInSpan(
         this.tracer,
-        'ProvingOrchestrator.prover.getPublicTubeProof',
+        'ProvingOrchestrator.prover.getPublicChonkVerifierProof',
         {
           [Attributes.TX_HASH]: txHash,
-          [Attributes.PROTOCOL_CIRCUIT_NAME]: 'tube-public' satisfies CircuitName,
+          [Attributes.PROTOCOL_CIRCUIT_NAME]: 'chonk-verifier-public' satisfies CircuitName,
         },
-        signal => this.prover.getPublicTubeProof(inputs, signal, provingState.epochNumber),
+        signal => this.prover.getPublicChonkVerifierProof(inputs, signal, provingState.epochNumber),
       ),
       handler,
     );

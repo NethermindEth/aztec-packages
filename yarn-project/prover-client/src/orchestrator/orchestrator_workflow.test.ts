@@ -146,7 +146,7 @@ describe('prover/orchestrator', () => {
       });
 
       it('can start tube proofs before adding processed txs', async () => {
-        const getTubeSpy = jest.spyOn(prover, 'getPublicTubeProof');
+        const getTubeSpy = jest.spyOn(prover, 'getPublicChonkVerifierProof');
         const { txs: processedTxs } = await context.makePendingBlock(2);
         const {
           blobFieldsLengths: [blobFieldsLength],

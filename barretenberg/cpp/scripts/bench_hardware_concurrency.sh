@@ -51,7 +51,7 @@ run_benchmark() {
     fi
 
     # Run the command with specified concurrency
-    local cmd="BB_BENCH=1 HARDWARE_CONCURRENCY=$concurrency $REPO_ROOT/barretenberg/cpp/build/bin/bb prove --scheme client_ivc --output_path /tmp --ivc_inputs_path $input_path --bench_out $bench_file"
+    local cmd="BB_BENCH=1 HARDWARE_CONCURRENCY=$concurrency $REPO_ROOT/barretenberg/cpp/build/bin/bb prove --scheme chonk --output_path /tmp --ivc_inputs_path $input_path --bench_out $bench_file"
 
     if [ "$DENOISE" = "1" ]; then
         DENOISE=1 denoise "$cmd" >&2
@@ -195,7 +195,7 @@ for test_case in test_cases:
     for cpu, metrics in all_data.items():
         for metric_name, time_ms in metrics.items():
             # Categorize metrics based on name
-            if "ClientIvc" in metric_name or "SumcheckClientIVC" in metric_name:
+            if "Chonk" in metric_name or "SumcheckChonk" in metric_name:
                 components["Main"][metric_name][cpu] = time_ms
             elif "ProtogalaxyProver" in metric_name:
                 components["ProtogalaxyProver"][metric_name][cpu] = time_ms

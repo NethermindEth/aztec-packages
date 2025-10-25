@@ -10,7 +10,7 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 }
 
-export async function proveClientIVC(
+export async function proveChonk(
   bytecodes: string[],
   witnessStack: Uint8Array[],
   vks: string[],

@@ -75,7 +75,7 @@ Call the `.profile` method on a contract interaction or deployment, specifying t
 export type ProfileMethodOptions = SimulateMethodOptions & {
   /** Whether to return gates information or the bytecode/witnesses. */
   profileMode: 'gates' | 'execution-steps' | 'full';
-  /** Whether to generate a ClientIVC proof or not */
+  /** Whether to generate a Chonk proof or not */
   skipProofGeneration?: boolean;
 };
 ```

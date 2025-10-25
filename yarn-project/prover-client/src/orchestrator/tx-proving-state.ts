@@ -14,7 +14,7 @@ import {
   PrivateBaseRollupHints,
   PrivateTxBaseRollupPrivateInputs,
   PublicBaseRollupHints,
-  PublicTubePublicInputs,
+  PublicChonkVerifierPublicInputs,
   PublicTxBaseRollupPrivateInputs,
 } from '@aztec/stdlib/rollup';
 import type { CircuitName } from '@aztec/stdlib/stats';
@@ -22,7 +22,7 @@ import type { AppendOnlyTreeSnapshot, MerkleTreeId } from '@aztec/stdlib/trees';
 import type { ProcessedTx } from '@aztec/stdlib/tx';
 import { VerificationKeyData, VkData } from '@aztec/stdlib/vks';
 
-import { getCivcProofFromTx, getPublicTubePrivateInputsFromTx, toProofData } from './block-building-helpers.js';
+import { getCivcProofFromTx, getPublicChonkVerifierPrivateInputsFromTx, toProofData } from './block-building-helpers.js';
 
 /**
  * Helper class to manage the proving cycle of a transaction
@@ -30,8 +30,8 @@ import { getCivcProofFromTx, getPublicTubePrivateInputsFromTx, toProofData } fro
  * Also stores the inputs to the base rollup for this transaction and the tree snapshots
  */
 export class TxProvingState {
-  private publicTube?: PublicInputsAndRecursiveProof<
-    PublicTubePublicInputs,
+  private publicChonkVerifier?: PublicInputsAndRecursiveProof<
+    PublicChonkVerifierPublicInputs,
     typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH
   >;
   private avm?: ProofAndVerificationKey<typeof AVM_V2_PROOF_LENGTH_IN_FIELDS_PADDED>;
@@ -48,15 +48,15 @@ export class TxProvingState {
   }
 
   public ready() {
-    return !this.requireAvmProof || (!!this.avm && !!this.publicTube);
+    return !this.requireAvmProof || (!!this.avm && !!this.publicChonkVerifier);
   }
 
   public getAvmInputs(): AvmCircuitInputs {
     return this.processedTx.avmProvingRequest!.inputs;
   }
 
-  public getPublicTubePrivateInputs() {
-    return getPublicTubePrivateInputsFromTx(this.processedTx, this.proverId);
+  public getPublicChonkVerifierPrivateInputs() {
+    return getPublicChonkVerifierPrivateInputsFromTx(this.processedTx, this.proverId);
   }
 
   public getBaseRollupTypeAndInputs() {
@@ -74,12 +74,12 @@ export class TxProvingState {
   }
 
   public setPublicTubeProof(
-    publicTubeProofAndVk: PublicInputsAndRecursiveProof<
-      PublicTubePublicInputs,
+    publicChonkVerifierProofAndVk: PublicInputsAndRecursiveProof<
+      PublicChonkVerifierPublicInputs,
       typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH
     >,
   ) {
-    this.publicTube = publicTubeProofAndVk;
+    this.publicChonkVerifier = publicChonkVerifierProofAndVk;
   }
 
   public setAvmProof(avmProofAndVk: ProofAndVerificationKey<typeof AVM_V2_PROOF_LENGTH_IN_FIELDS_PADDED>) {
@@ -104,7 +104,7 @@ export class TxProvingState {
     if (!this.processedTx.avmProvingRequest) {
       throw new Error('Should create private base rollup for a tx not requiring avm proof.');
     }
-    if (!this.publicTube) {
+    if (!this.publicChonkVerifier) {
       throw new Error('Tx not ready for proving base rollup: public tube proof undefined');
     }
     if (!this.avm) {
@@ -114,7 +114,7 @@ export class TxProvingState {
       throw new Error('Mismatched base rollup hints, expected public base rollup hints');
     }
 
-    const publicTubeProofData = toProofData(this.publicTube);
+    const publicChonkVerifierProofData = toProofData(this.publicChonkVerifier);
 
     const avmProofData = new ProofData(
       this.processedTx.avmProvingRequest.inputs.publicInputs,
@@ -122,7 +122,7 @@ export class TxProvingState {
       this.#getVkData(this.avm!.verificationKey, AVM_VK_INDEX),
     );
 
-    return new PublicTxBaseRollupPrivateInputs(publicTubeProofData, avmProofData, this.baseRollupHints);
+    return new PublicTxBaseRollupPrivateInputs(publicChonkVerifierProofData, avmProofData, this.baseRollupHints);
   }
 
   #getVkData(verificationKey: VerificationKeyData, vkIndex: number) {
