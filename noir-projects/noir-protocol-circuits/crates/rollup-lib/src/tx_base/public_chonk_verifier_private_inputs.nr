@@ -1,12 +1,12 @@
 use crate::abis::PublicChonkVerifierPublicInputs;
 use dep::types::{
     abis::kernel_circuit_public_inputs::PrivateToPublicKernelCircuitPublicInputs,
-    constants::HIDING_KERNEL_TO_PUBLIC_VK_INDEX, proof::proof_data::CivcProofData,
+    constants::HIDING_KERNEL_TO_PUBLIC_VK_INDEX, proof::proof_data::ChonkProofData,
 };
 
 // CHONK_VERIFIER: Recursively verifies Chonk (Client Honk) proofs in circuits
 pub struct PublicChonkVerifierPrivateInputs {
-    hiding_kernel_proof_data: CivcProofData<PrivateToPublicKernelCircuitPublicInputs>,
+    hiding_kernel_proof_data: ChonkProofData<PrivateToPublicKernelCircuitPublicInputs>,
     prover_id: Field,
 }
 

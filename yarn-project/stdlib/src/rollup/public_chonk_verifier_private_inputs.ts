@@ -5,12 +5,12 @@ import { bufferToHex, hexToBuffer } from '@aztec/foundation/string';
 import type { FieldsOf } from '@aztec/foundation/types';
 
 import { PrivateToPublicKernelCircuitPublicInputs } from '../kernel/private_to_public_kernel_circuit_public_inputs.js';
-import { type CivcProofData, ProofData } from '../proofs/proof_data.js';
+import { type ChonkProofData, ProofData } from '../proofs/proof_data.js';
 
 // CHONK_VERIFIER: Recursively verifies Chonk (Client Honk) proofs in circuits
 export class PublicChonkVerifierPrivateInputs {
   constructor(
-    public hidingKernelProofData: CivcProofData<PrivateToPublicKernelCircuitPublicInputs>,
+    public hidingKernelProofData: ChonkProofData<PrivateToPublicKernelCircuitPublicInputs>,
     public proverId: Fr,
   ) {}
 

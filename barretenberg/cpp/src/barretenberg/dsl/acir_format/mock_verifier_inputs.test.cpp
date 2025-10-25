@@ -190,6 +190,6 @@ TEST(MockVerifierInputsTest, MockChonkProofSize)
 {
     using Builder = MegaCircuitBuilder;
 
-    HonkProof civc_proof = create_mock_chonk_proof<Builder>();
-    EXPECT_EQ(civc_proof.size(), SumcheckChonk::Proof::PROOF_LENGTH());
+    HonkProof chonk_proof = create_mock_chonk_proof<Builder>();
+    EXPECT_EQ(chonk_proof.size(), SumcheckChonk::Proof::PROOF_LENGTH());
 }
