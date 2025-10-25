@@ -71,6 +71,23 @@ function publish_log {
   } | redis_setexz $key $CI_REDIS_EXPIRE
 }
 
+function publish_log_final {
+  if [ "$CI_REDIS_AVAILABLE" -eq 0 ]; then
+    return
+  fi
+
+  {
+    echo "Parent Log: ${PARENT_LOG_URL:-none}"
+    echo "Command: $cmd"
+    echo "Date: $(date)"
+    echo "Status: $status"
+    echo "Took: ${time}"
+    echo
+
+    cat $outfile
+  } | redis_setexz_with_disk $key $CI_REDIS_EXPIRE
+}
+
 function live_publish_log {
   while [ -f $outfile ]; do
     if [ $(( $(date +%s) - $(stat -c %Y "$outfile") )) -le 5 ]; then
@@ -112,7 +129,7 @@ status=$?
 
 time="${SECONDS}s"
 [ -n "${publish_pid:-}" ] && kill $publish_pid &>/dev/null || true
-publish_log
+publish_log_final
 
 # Handle non-zero exit status
 if [ "$status" -ne 0 ]; then

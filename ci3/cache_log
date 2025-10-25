@@ -17,6 +17,10 @@ function publish_log {
   cat $outfile | redis_setexz $key $CI_REDIS_EXPIRE
 }
 
+function publish_log_final {
+  cat $outfile | redis_setexz_with_disk $key $CI_REDIS_EXPIRE
+}
+
 function live_publish_log {
   while [ -f $outfile ]; do
     if [ $(( $(date +%s) - $(stat -c %Y "$outfile") )) -le 5 ]; then
@@ -43,7 +47,7 @@ if [ "$CI_REDIS_AVAILABLE" -eq 1 ]; then
   else
     redact | cat >>$outfile
   fi
-  publish_log
+  publish_log_final
 else
   if [ "$dup" -eq 1 ]; then
     redact | cat

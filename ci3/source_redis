@@ -1,4 +1,8 @@
 # We use a redis cache for e.g. test run tracking, denoise logs, etc.
+# Also supports disk-based logging with fallback.
+
+# Source disk logging functions
+source ${ci3}/source_disk_logs
 
 # Declare CI_REDIS host, allowing override.
 export CI_REDIS=${CI_REDIS:-localhost}
@@ -59,16 +63,41 @@ function redis_setexz {
   gzip | redis_cli -x SETEX $1 $2 &>/dev/null
 }
 
+# Version that also writes to disk (for log files only)
+function redis_setexz_with_disk {
+  local key="$1"
+  local expire="$2"
+  local tmpfile="/tmp/redis_log_$$_${key}.gz"
+
+  # Save gzipped data to temp file
+  cat | gzip > "$tmpfile"
+
+  # Write to Redis
+  cat "$tmpfile" | redis_cli -x SETEX "$key" "$expire" &>/dev/null
+
+  # Also transfer to bastion disk in CI (async)
+  if [ "${DISK_LOGS_ENABLED:-0}" -eq 1 ]; then
+    disk_log_transfer "$key" "$tmpfile"
+  fi
+
+  # Note: temp file will be cleaned up when SCP completes (running in background)
+  # We could add cleanup but it's /tmp and will be cleared on reboot
+}
+
 function redis_getz {
   hex=$(redis_cli --raw GET "$1" | head -c -1 | xxd -p)
   if [ -z "$hex" ]; then
     echo "Key not found."
+    return 1
   fi
   if [[ "${hex:0:4}" == "1f8b" ]]; then
-    echo "$hex" | xxd -r -p | gunzip
+    # Try to gunzip, fall back to raw if corrupted
+    if ! echo "$hex" | xxd -r -p | gunzip 2>/dev/null; then
+      echo "$hex" | xxd -r -p
+    fi
   else
     echo "$hex" | xxd -r -p
   fi
 }
 
-export -f redis_cli redis_setexz redis_getz
+export -f redis_cli redis_setexz redis_setexz_with_disk redis_getz
