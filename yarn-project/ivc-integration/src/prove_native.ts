@@ -68,13 +68,7 @@ export async function proveChonk(
   const ivcInputsPath = path.join(bbWorkingDirectory, 'ivc-inputs.msgpack');
   await fs.writeFile(ivcInputsPath, encoded);
 
-  const provingResult = await executeBbChonkProof(
-    bbBinaryPath,
-    bbWorkingDirectory,
-    ivcInputsPath,
-    logger.info,
-    true,
-  );
+  const provingResult = await executeBbChonkProof(bbBinaryPath, bbWorkingDirectory, ivcInputsPath, logger.info, true);
 
   if (provingResult.status === BB_RESULT.FAILURE) {
     throw new Error(provingResult.reason);

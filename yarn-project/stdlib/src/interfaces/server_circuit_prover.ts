@@ -64,7 +64,9 @@ export interface ServerCircuitProver {
     inputs: PublicChonkVerifierPrivateInputs,
     signal?: AbortSignal,
     epochNumber?: number,
-  ): Promise<PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>>;
+  ): Promise<
+    PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>
+  >;
 
   /**
    * Creates a proof for the given input.

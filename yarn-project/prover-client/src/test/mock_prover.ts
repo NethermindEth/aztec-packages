@@ -143,7 +143,9 @@ export class MockProver implements ServerCircuitProver {
     _inputs: PublicChonkVerifierPrivateInputs,
     _signal?: AbortSignal,
     _epochNumber?: number,
-  ): Promise<PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>> {
+  ): Promise<
+    PublicInputsAndRecursiveProof<PublicChonkVerifierPublicInputs, typeof NESTED_RECURSIVE_ROLLUP_HONK_PROOF_LENGTH>
+  > {
     return Promise.resolve(
       makePublicInputsAndRecursiveProof(
         makePublicChonkVerifierPublicInputs(),

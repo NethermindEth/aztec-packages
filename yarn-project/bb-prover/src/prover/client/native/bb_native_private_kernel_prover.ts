@@ -38,10 +38,7 @@ export class BBNativePrivateKernelProver extends BBPrivateKernelProver {
     );
   }
 
-  private async _createChonkProof(
-    directory: string,
-    executionSteps: PrivateExecutionStep[],
-  ): Promise<ChonkProof> {
+  private async _createChonkProof(directory: string, executionSteps: PrivateExecutionStep[]): Promise<ChonkProof> {
     const inputsPath = path.join(directory, 'ivc-inputs.msgpack');
     await fs.writeFile(inputsPath, serializePrivateExecutionSteps(executionSteps));
     const provingResult = await executeBbChonkProof(this.bbBinaryPath, directory, inputsPath, this.log.info);

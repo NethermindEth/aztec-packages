@@ -91,7 +91,10 @@ export const ProvingJobInputs = z.discriminatedUnion('type', [
   AvmProvingRequestSchema,
   z.object({ type: z.literal(ProvingRequestType.PARITY_BASE), inputs: ParityBasePrivateInputs.schema }),
   z.object({ type: z.literal(ProvingRequestType.PARITY_ROOT), inputs: ParityRootPrivateInputs.schema }),
-  z.object({ type: z.literal(ProvingRequestType.PUBLIC_CHONK_VERIFIER), inputs: PublicChonkVerifierPrivateInputs.schema }),
+  z.object({
+    type: z.literal(ProvingRequestType.PUBLIC_CHONK_VERIFIER),
+    inputs: PublicChonkVerifierPrivateInputs.schema,
+  }),
   z.object({
     type: z.literal(ProvingRequestType.PRIVATE_TX_BASE_ROLLUP),
     inputs: PrivateTxBaseRollupPrivateInputs.schema,

@@ -1090,7 +1090,11 @@ export function makePrivateTxBaseRollupPrivateInputs(seed = 0) {
 }
 
 export function makePublicTxBaseRollupPrivateInputs(seed = 0) {
-  const publicChonkVerifierProofData = makeProofData(seed, makePublicChonkVerifierPublicInputs, RECURSIVE_ROLLUP_HONK_PROOF_LENGTH);
+  const publicChonkVerifierProofData = makeProofData(
+    seed,
+    makePublicChonkVerifierPublicInputs,
+    RECURSIVE_ROLLUP_HONK_PROOF_LENGTH,
+  );
   const avmProofData = makeProofData(seed + 0x100, makeAvmCircuitPublicInputs, AVM_V2_PROOF_LENGTH_IN_FIELDS_PADDED);
   const hints = makePublicBaseRollupHints(seed + 0x200);
 
