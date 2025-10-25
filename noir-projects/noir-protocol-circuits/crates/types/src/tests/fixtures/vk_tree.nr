@@ -28,9 +28,7 @@ pub fn generate_fake_rollup_honk_vk_for_index(
     generate_fake_vk_for_index(index)
 }
 
-pub fn generate_fake_chonk_vk_for_index(
-    index: u32,
-) -> VerificationKey<MEGA_VK_LENGTH_IN_FIELDS> {
+pub fn generate_fake_chonk_vk_for_index(index: u32) -> VerificationKey<MEGA_VK_LENGTH_IN_FIELDS> {
     generate_fake_vk_for_index(index)
 }
 
