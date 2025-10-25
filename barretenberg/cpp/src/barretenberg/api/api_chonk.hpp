@@ -40,7 +40,7 @@ class ChonkAPI : public API {
                const std::filesystem::path& witness_path) override;
 };
 
-void gate_count_for(const std::string& bytecode_path, bool include_gates_per_opcode);
+void chonk_gate_count(const std::string& bytecode_path, bool include_gates_per_opcode);
 
 std::vector<uint8_t> decompress(const void* bytes, size_t size);
 

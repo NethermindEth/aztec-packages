@@ -134,7 +134,7 @@ bool ChonkAPI::prove_and_verify(const std::filesystem::path& input_path)
 void ChonkAPI::gates(const Flags& flags, const std::filesystem::path& bytecode_path)
 {
     BB_BENCH_NAME("ChonkAPI::gates");
-    gate_count_for_ivc(bytecode_path, flags.include_gates_per_opcode);
+    chonk_gate_count(bytecode_path, flags.include_gates_per_opcode);
 }
 
 void ChonkAPI::write_solidity_verifier([[maybe_unused]] const Flags& flags,
@@ -203,9 +203,9 @@ bool ChonkAPI::check([[maybe_unused]] const Flags& flags,
     return false;
 }
 
-void gate_count_for_ivc(const std::string& bytecode_path, bool include_gates_per_opcode)
+void chonk_gate_count(const std::string& bytecode_path, bool include_gates_per_opcode)
 {
-    BB_BENCH_NAME("gate_count_for_ivc");
+    BB_BENCH_NAME("chonk_gate_count");
     // All circuit reports will be built into the std::string below
     std::string functions_string = "{\"functions\": [\n  ";
 
