@@ -135,13 +135,10 @@ export class VerificationKeyAsFields {
   }
 
   static fromFrBuffer(vkBytes: Buffer): Promise<VerificationKeyAsFields> {
-    const vkFields: Fr[] = [];
-    for (let i = 0; i < vkBytes.length / Fr.SIZE_IN_BYTES; i++) {
-      const start = i * Fr.SIZE_IN_BYTES;
-      const end = (i + 1) * Fr.SIZE_IN_BYTES;
-      vkFields.push(Fr.fromBuffer(vkBytes.subarray(start, end)));
-    }
-    return VerificationKeyAsFields.fromKey(vkFields);
+    const numFields = vkBytes.length / Fr.SIZE_IN_BYTES;
+    const reader = BufferReader.asReader(vkBytes);
+    const fields = reader.readArray(numFields, Fr);
+    return VerificationKeyAsFields.fromKey(fields);
   }
 
   /**
@@ -313,6 +310,10 @@ export class VerificationKeyData {
     const length = reader.readNumber();
     const bytes = reader.readBytes(length);
     return new VerificationKeyData(verificationKeyAsFields, bytes);
+  }
+
+  static async fromFrBuffer(vkBytes: Buffer): Promise<VerificationKeyData> {
+    return new VerificationKeyData(await VerificationKeyAsFields.fromFrBuffer(vkBytes), vkBytes);
   }
 
   static fromString(str: string): VerificationKeyData {
