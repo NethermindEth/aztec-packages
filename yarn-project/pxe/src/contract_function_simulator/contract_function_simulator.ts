@@ -490,7 +490,7 @@ export async function generateSimulatedProvingResult(
   return {
     publicInputs,
     chonkProof: ChonkProof.empty(),
-    executionSteps: executionSteps,
+    executionSteps,
   };
 }
 

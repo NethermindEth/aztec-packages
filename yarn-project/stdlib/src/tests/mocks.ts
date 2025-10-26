@@ -150,7 +150,7 @@ export const mockTx = async (
 
   return await Tx.create({
     data,
-    chonkProof: chonkProof,
+    chonkProof,
     contractClassLogFields: [],
     publicFunctionCalldata,
   });

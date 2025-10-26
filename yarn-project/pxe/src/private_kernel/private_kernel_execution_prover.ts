@@ -361,7 +361,7 @@ export class PrivateKernelExecutionProver {
     return {
       publicInputs: tailOutput.publicInputs,
       executionSteps,
-      chonkProof: chonkProof,
+      chonkProof,
       timings: provingTime ? { proving: provingTime } : undefined,
     };
   }
