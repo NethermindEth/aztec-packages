@@ -120,7 +120,7 @@ export class QueuedChonkVerifier implements ClientProtocolCircuitVerifier {
     config: BBConfig,
     private verifier: ClientProtocolCircuitVerifier,
     private telemetry: TelemetryClient = getTelemetryClient(),
-    private logger = createLogger('bb-prover:queued_ivc_verifier'),
+    private logger = createLogger('bb-prover:queued_chonk_verifier'),
   ) {
     this.metrics = new ChonkVerifierMetrics(this.telemetry, 'QueuedChonkVerifier');
     this.queue = new SerialQueue();
