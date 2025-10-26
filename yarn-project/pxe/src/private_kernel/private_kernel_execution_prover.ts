@@ -23,7 +23,7 @@ import {
   type PrivateKernelTailCircuitPublicInputs,
   PrivateVerificationKeyHints,
 } from '@aztec/stdlib/kernel';
-import { ClientIvcProof } from '@aztec/stdlib/proofs';
+import { ChonkProof } from '@aztec/stdlib/proofs';
 import {
   type PrivateCallExecutionResult,
   type PrivateExecutionResult,
@@ -53,7 +53,7 @@ export interface PrivateKernelExecutionProverConfig {
 /**
  * The PrivateKernelExecutionProver class is responsible for taking a transaction request and sequencing the
  * the execution of the private functions within, sequenced with private kernel "glue" to check protocol rules.
- * The result can be a client IVC proof of the private transaction portion, or just a simulation that can e.g.
+ * The result can be a chonk proof of the private transaction portion, or just a simulation that can e.g.
  * inform state tree updates.
  */
 export class PrivateKernelExecutionProver {
@@ -347,21 +347,21 @@ export class PrivateKernelExecutionProver {
       this.log.info(`Private kernel witness generation took ${timer.ms()}ms`);
     }
 
-    let clientIvcProof: ClientIvcProof;
+    let chonkProof: ChonkProof;
     // TODO(#7368) how do we 'bincode' encode these inputs?
     let provingTime;
     if (!skipProofGeneration) {
       const provingTimer = new Timer();
-      clientIvcProof = await this.proofCreator.createClientIvcProof(executionSteps);
+      chonkProof = await this.proofCreator.createChonkProof(executionSteps);
       provingTime = provingTimer.ms();
     } else {
-      clientIvcProof = ClientIvcProof.random();
+      chonkProof = ChonkProof.random();
     }
 
     return {
       publicInputs: tailOutput.publicInputs,
       executionSteps,
-      clientIvcProof,
+      chonkProof,
       timings: provingTime ? { proving: provingTime } : undefined,
     };
   }
