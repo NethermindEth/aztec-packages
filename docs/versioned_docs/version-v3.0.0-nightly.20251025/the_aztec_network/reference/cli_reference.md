@@ -289,7 +289,7 @@ tags:
     --proverNode.bbSkipCleanup <value>                                                                                                     ($BB_SKIP_CLEANUP)
           Whether to skip cleanup of bb temporary files
 
-    --proverNode.numConcurrentChonkVerifiers <value>                           (default: 8)                                                  ($BB_NUM_CHONK_VERIFIERS)
+    --proverNode.numConcurrentIVCVerifiers <value>                           (default: 8)                                                  ($BB_NUM_IVC_VERIFIERS)
           Max number of client IVC verifiers to run concurrently
 
     --proverNode.bbIVCConcurrency <value>                                    (default: 1)                                                  ($BB_IVC_CONCURRENCY)

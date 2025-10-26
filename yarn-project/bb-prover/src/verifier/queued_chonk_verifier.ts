@@ -18,7 +18,7 @@ import { createHistogram } from 'node:perf_hooks';
 
 import type { BBConfig } from '../config.js';
 
-class ChonkVerifierMetrics {
+class IVCVerifierMetrics {
   private ivcVerificationHistogram: Histogram;
   private ivcTotalVerificationHistogram: Histogram;
   private ivcFailureCount: UpDownCounter;
@@ -33,48 +33,48 @@ class ChonkVerifierMetrics {
 
   private aggDurationMetrics: Record<'min' | 'max' | 'p50' | 'p90' | 'avg', ObservableGauge>;
 
-  constructor(client: TelemetryClient, name = 'QueuedChonkVerifier') {
+  constructor(client: TelemetryClient, name = 'QueuedIVCVerifier') {
     const meter = client.getMeter(name);
 
-    this.ivcVerificationHistogram = meter.createHistogram(Metrics.CHONK_VERIFIER_TIME, {
+    this.ivcVerificationHistogram = meter.createHistogram(Metrics.IVC_VERIFIER_TIME, {
       unit: 'ms',
       description: 'Duration to verify chonk proofs',
       valueType: ValueType.INT,
     });
 
-    this.ivcTotalVerificationHistogram = meter.createHistogram(Metrics.CHONK_VERIFIER_TOTAL_TIME, {
+    this.ivcTotalVerificationHistogram = meter.createHistogram(Metrics.IVC_VERIFIER_TOTAL_TIME, {
       unit: 'ms',
       description: 'Total duration to verify chonk proofs, including serde',
       valueType: ValueType.INT,
     });
 
-    this.ivcFailureCount = meter.createUpDownCounter(Metrics.CHONK_VERIFIER_FAILURE_COUNT, {
+    this.ivcFailureCount = meter.createUpDownCounter(Metrics.IVC_VERIFIER_FAILURE_COUNT, {
       description: 'Count of failed IVC proof verifications',
       valueType: ValueType.INT,
     });
 
     this.aggDurationMetrics = {
-      avg: meter.createObservableGauge(Metrics.CHONK_VERIFIER_AGG_DURATION_AVG, {
+      avg: meter.createObservableGauge(Metrics.IVC_VERIFIER_AGG_DURATION_AVG, {
         valueType: ValueType.DOUBLE,
         description: 'AVG ivc verification',
         unit: 'ms',
       }),
-      max: meter.createObservableGauge(Metrics.CHONK_VERIFIER_AGG_DURATION_MAX, {
+      max: meter.createObservableGauge(Metrics.IVC_VERIFIER_AGG_DURATION_MAX, {
         valueType: ValueType.DOUBLE,
         description: 'MAX ivc verification',
         unit: 'ms',
       }),
-      min: meter.createObservableGauge(Metrics.CHONK_VERIFIER_AGG_DURATION_MIN, {
+      min: meter.createObservableGauge(Metrics.IVC_VERIFIER_AGG_DURATION_MIN, {
         valueType: ValueType.DOUBLE,
         description: 'MIN ivc verification',
         unit: 'ms',
       }),
-      p50: meter.createObservableGauge(Metrics.CHONK_VERIFIER_AGG_DURATION_P50, {
+      p50: meter.createObservableGauge(Metrics.IVC_VERIFIER_AGG_DURATION_P50, {
         valueType: ValueType.DOUBLE,
         description: 'P50 ivc verification',
         unit: 'ms',
       }),
-      p90: meter.createObservableGauge(Metrics.CHONK_VERIFIER_AGG_DURATION_P90, {
+      p90: meter.createObservableGauge(Metrics.IVC_VERIFIER_AGG_DURATION_P90, {
         valueType: ValueType.DOUBLE,
         description: 'P90 ivc verification',
         unit: 'ms',
@@ -112,9 +112,9 @@ class ChonkVerifierMetrics {
   };
 }
 
-export class QueuedChonkVerifier implements ClientProtocolCircuitVerifier {
+export class QueuedIVCVerifier implements ClientProtocolCircuitVerifier {
   private queue: SerialQueue;
-  private metrics: ChonkVerifierMetrics;
+  private metrics: IVCVerifierMetrics;
 
   public constructor(
     config: BBConfig,
@@ -122,10 +122,10 @@ export class QueuedChonkVerifier implements ClientProtocolCircuitVerifier {
     private telemetry: TelemetryClient = getTelemetryClient(),
     private logger = createLogger('bb-prover:queued_chonk_verifier'),
   ) {
-    this.metrics = new ChonkVerifierMetrics(this.telemetry, 'QueuedChonkVerifier');
+    this.metrics = new IVCVerifierMetrics(this.telemetry, 'QueuedIVCVerifier');
     this.queue = new SerialQueue();
-    this.logger.info(`Starting QueuedChonkVerifier with ${config.numConcurrentChonkVerifiers} concurrent verifiers`);
-    this.queue.start(config.numConcurrentChonkVerifiers);
+    this.logger.info(`Starting QueuedIVCVerifier with ${config.numConcurrentIVCVerifiers} concurrent verifiers`);
+    this.queue.start(config.numConcurrentIVCVerifiers);
   }
 
   public async verifyProof(tx: Tx): Promise<IVCProofVerificationResult> {

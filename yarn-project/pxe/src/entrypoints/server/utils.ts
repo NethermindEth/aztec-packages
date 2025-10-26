@@ -85,7 +85,7 @@ function createProver(
   } else {
     const bbConfig = config as Required<Pick<PXEConfig, 'bbBinaryPath' | 'bbWorkingDirectory'>> & PXEConfig;
     return BBNativePrivateKernelProver.new(
-      { bbSkipCleanup: false, numConcurrentChonkVerifiers: 1, bbIVCConcurrency: 1, ...bbConfig },
+      { bbSkipCleanup: false, numConcurrentIVCVerifiers: 1, bbIVCConcurrency: 1, ...bbConfig },
       simulator,
       logger,
     );

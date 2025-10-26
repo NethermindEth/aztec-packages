@@ -213,7 +213,7 @@ aztec start --network testnet --l1-rpc-urls https://example.com --l1-consensus-h
 - `--proverNode.bbWorkingDirectory <value>`: The working directory to use for proving.
 - `--proverNode.bbBinaryPath <value>`: The path to the bb binary.
 - `--proverNode.bbSkipCleanup <value>`: Whether to skip cleanup of bb temporary files.
-- `--proverNode.numConcurrentChonkVerifiers <value>`: Max number of client IVC verifiers to run concurrently (default: 8).
+- `--proverNode.numConcurrentIVCVerifiers <value>`: Max number of client IVC verifiers to run concurrently (default: 8).
 - `--proverNode.bbIVCConcurrency <value>`: Number of threads to use for IVC verification (default: 1).
 - `--proverNode.nodeUrl <value>`: The URL to the Aztec node to take proving jobs from.
 - `--proverNode.proverId <value>`: Hex value that identifies the prover. Defaults to the address used for submitting proofs if not set.

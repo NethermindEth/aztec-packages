@@ -7,7 +7,7 @@ import { CheatCodes } from '@aztec/aztec/testing';
 import {
   BBCircuitVerifier,
   type ClientProtocolCircuitVerifier,
-  QueuedChonkVerifier,
+  QueuedIVCVerifier,
   TestCircuitVerifier,
 } from '@aztec/bb-prover';
 import { createBlobSinkClient } from '@aztec/blob-sink/client';
@@ -188,7 +188,7 @@ export class FullProverTest {
       }
 
       const verifier = await BBCircuitVerifier.new(bbConfig);
-      this.circuitProofVerifier = new QueuedChonkVerifier(bbConfig, verifier);
+      this.circuitProofVerifier = new QueuedIVCVerifier(bbConfig, verifier);
 
       this.logger.debug(`Configuring the node for real proofs...`);
       await this.aztecNodeAdmin.setConfig({
