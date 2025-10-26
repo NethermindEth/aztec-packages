@@ -361,9 +361,6 @@ ENTRYPOINT [ "/sbin/init", "--log-level=err" ]
 
 ###################### END OF STOCK NESTYBOX SYSTEMD CONTAINER ###############################
 
-# Bump thread limits in line with whatever the container is launched with.
-RUN sed -i 's/^#\?DefaultTasksMax=.*/DefaultTasksMax=infinity/' /etc/systemd/system.conf
-
 # Install docker.
 COPY docker_daemon.json /etc/docker/daemon.json
 RUN curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh \
@@ -388,5 +385,11 @@ RUN apt update && apt install -y libpam-google-authenticator
 # Sets RUSTUP_HOME.
 # Adds foundry and cargo bin dirs to PATH.
 COPY environment /etc/environment
+
+# Bump thread limits in line with whatever the container is launched with.
+RUN sed -i 's/^#\?DefaultTasksMax=.*/DefaultTasksMax=infinity/' /etc/systemd/system.conf
+RUN mkdir -p /etc/systemd/user.conf.d /etc/systemd/user/user.slice.d && \
+    printf "[Manager]\nDefaultTasksMax=infinity\n" > /etc/systemd/user.conf.d/override.conf && \
+    printf "[Slice]\nTasksMax=infinity\n" > /etc/systemd/user/user.slice.d/override.conf
 
 EXPOSE 22
