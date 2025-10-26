@@ -20,22 +20,6 @@ else
   export hash="$hash-singlearch"
 fi
 
-function ensure_zig {
-  if command -v zig &>/dev/null; then
-    return
-  fi
-  local arch=$(uname -m)
-  local zig_version=0.15.1
-  local bin_path=/opt/zig-${arch}-linux-${zig_version}
-  if [ -f $bin_path/zig ]; then
-    export PATH="$bin_path:$PATH"
-    return
-  fi
-  echo "Installing zig $zig_version..."
-  curl -sL https://ziglang.org/download/$zig_version/zig-${arch}-linux-$zig_version.tar.xz | sudo tar -xJ -C /opt
-  export PATH="$bin_path:$PATH"
-}
-
 # Injects version number into a given bb binary.
 # Means we don't actually need to rebuild bb to release a new version if code hasn't changed.
 function inject_version {
@@ -96,7 +80,6 @@ function build_asan_fast {
 
 function build_nodejs_module {
   set -eu
-  ensure_zig
   (cd src/barretenberg/nodejs_module && yarn --frozen-lockfile --prefer-offline)
   if ! cache_download barretenberg-native-nodejs-module-$hash.zst; then
     if semver check "$REF_NAME"; then
@@ -116,7 +99,6 @@ function build_nodejs_module {
 
 function build_darwin_arm64 {
   set -eu
-  ensure_zig
   if ! cache_download barretenberg-arm64-macos-$hash.zst; then
     build_preset zig-arm64-macos --target bb
     cache_upload barretenberg-arm64-macos-$hash.zst build-zig-arm64-macos/bin
@@ -125,7 +107,6 @@ function build_darwin_arm64 {
 
 function build_darwin_amd64 {
   set -eu
-  ensure_zig
   if ! cache_download barretenberg-amd64-macos-$hash.zst; then
     build_preset zig-amd64-macos --target bb
     cache_upload barretenberg-amd64-macos-$hash.zst build-zig-amd64-macos/bin
@@ -219,34 +200,26 @@ function build_release {
     tar -czf build-release/barretenberg-threads-wasm.tar.gz -C build-wasm-threads/bin barretenberg.wasm
     tar -czf build-release/barretenberg-threads-debug-wasm.tar.gz -C build-wasm-threads/bin barretenberg-debug.wasm
 
-    # Download ldid for code signing
-    if [ ! -f build/ldid ]; then
-      echo "Downloading ldid for macOS code signing..."
-      curl -sL https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64 -o build/ldid
-      chmod +x build/ldid
-    fi
-
     if semver check "$REF_NAME" && [[ "$(arch)" == "amd64" ]]; then
       # Package arm64-macos
       cp build-zig-arm64-macos/bin/bb build-release/bb
       inject_version build-release/bb
-      build/ldid -S build-release/bb
+      ldid -S build-release/bb
       tar -czf build-release/barretenberg-arm64-darwin.tar.gz -C build-release --remove-files bb
 
       # Package amd64-macos
       cp build-zig-amd64-macos/bin/bb build-release/bb
       inject_version build-release/bb
-      build/ldid -S build-release/bb
+      ldid -S build-release/bb
       tar -czf build-release/barretenberg-amd64-darwin.tar.gz -C build-release --remove-files bb
     fi
   fi
 }
 
-export -f ensure_zig build_preset build_native build_asan_fast build_darwin_amd64 build_darwin_arm64 build_nodejs_module build_wasm build_wasm_threads build_gcc_syntax_check_only build_fuzzing_syntax_check_only build_smt_verification
+export -f build_preset build_native build_asan_fast build_darwin_amd64 build_darwin_arm64 build_nodejs_module build_wasm build_wasm_threads build_gcc_syntax_check_only build_fuzzing_syntax_check_only build_smt_verification
 
 function build {
   echo_header "bb cpp build"
-  ensure_zig
   builds=(
     build_native
     build_nodejs_module
