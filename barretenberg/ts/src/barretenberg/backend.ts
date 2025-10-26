@@ -75,12 +75,6 @@ export class UltraHonkVerifierBackend {
     });
     return verified;
   }
-  destroy(): Promise<void> {
-    if (!this.api) {
-      return Promise.resolve();
-    }
-    return this.api.destroy();
-  }
 }
 
 export class UltraHonkBackend {
@@ -204,13 +198,6 @@ export class UltraHonkBackend {
       vkHash: uint8ArrayToHex(vkResult.hash),
     };
   }
-
-  async destroy(): Promise<void> {
-    if (!this.api) {
-      return;
-    }
-    await this.api.destroy();
-  }
 }
 
 export class AztecClientBackend {
@@ -306,13 +293,6 @@ export class AztecClientBackend {
       circuitSizes.push(gates.circuitSize);
     }
     return circuitSizes;
-  }
-
-  async destroy(): Promise<void> {
-    if (!this.api) {
-      return;
-    }
-    await this.api.destroy();
   }
 }
 

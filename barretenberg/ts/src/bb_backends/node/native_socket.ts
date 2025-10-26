@@ -164,7 +164,7 @@ export class BarretenbergNativeSocketAsyncBackend implements IMsgpackBackendAsyn
 
       // Set up event handlers
       this.socket.once('connect', () => {
-        this.socket!.unref();
+        // Socket starts referenced - will be unreferenced when no callbacks pending
 
         // Clear connection timeout on successful connection
         if (this.connectionTimeout) {
@@ -239,6 +239,11 @@ export class BarretenbergNativeSocketAsyncBackend implements IMsgpackBackendAsyn
             console.warn('Received response but no pending callback');
           }
 
+          // If no more pending callbacks, unref socket to allow process to exit
+          if (this.pendingCallbacks.length === 0 && this.socket) {
+            this.socket.unref();
+          }
+
           // Reset state for next message
           this.readingLength = true;
           this.lengthBytesRead = 0;
@@ -259,6 +264,11 @@ export class BarretenbergNativeSocketAsyncBackend implements IMsgpackBackendAsyn
     }
 
     return new Promise((resolve, reject) => {
+      // If this is the first pending callback, ref the socket to keep event loop alive
+      if (this.pendingCallbacks.length === 0) {
+        this.socket!.ref();
+      }
+
       // Enqueue this promise's callbacks (FIFO order)
       this.pendingCallbacks.push({ resolve, reject });
 
