@@ -1,5 +1,5 @@
 import { Archiver, createArchiver } from '@aztec/archiver';
-import { BBCircuitVerifier, QueuedIVCVerifier, TestCircuitVerifier } from '@aztec/bb-prover';
+import { BBCircuitVerifier, QueuedChonkVerifier, TestCircuitVerifier } from '@aztec/bb-prover';
 import { type BlobSinkClientInterface, createBlobSinkClient } from '@aztec/blob-sink/client';
 import {
   ARCHIVE_HEIGHT,
@@ -291,7 +291,7 @@ export class AztecNodeService implements AztecNode, AztecNodeAdmin, Traceable {
     if (!config.realProofs) {
       log.warn(`Aztec node is accepting fake proofs`);
     }
-    const proofVerifier = new QueuedIVCVerifier(config, circuitVerifier);
+    const proofVerifier = new QueuedChonkVerifier(config, circuitVerifier);
 
     // create the tx pool and the p2p client, which will need the l2 block source
     const p2pClient = await createP2PClient(

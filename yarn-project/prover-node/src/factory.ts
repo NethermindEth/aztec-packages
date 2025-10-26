@@ -1,5 +1,5 @@
 import { type Archiver, createArchiver } from '@aztec/archiver';
-import { BBCircuitVerifier, QueuedIVCVerifier, TestCircuitVerifier } from '@aztec/bb-prover';
+import { BBCircuitVerifier, QueuedChonkVerifier, TestCircuitVerifier } from '@aztec/bb-prover';
 import { type BlobSinkClientInterface, createBlobSinkClient } from '@aztec/blob-sink/client';
 import { EpochCache } from '@aztec/epoch-cache';
 import { L1TxUtils, PublisherManager, RollupContract, createEthereumChain } from '@aztec/ethereum';
@@ -146,7 +146,7 @@ export async function createProverNode(
       telemetry,
     });
 
-  const proofVerifier = new QueuedIVCVerifier(
+  const proofVerifier = new QueuedChonkVerifier(
     config,
     config.realProofs ? await BBCircuitVerifier.new(config) : new TestCircuitVerifier(),
   );

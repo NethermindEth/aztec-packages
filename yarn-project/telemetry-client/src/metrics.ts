@@ -233,12 +233,12 @@ export const TX_COLLECTOR_COUNT = 'aztec.tx_collector.tx_count';
 export const TX_COLLECTOR_DURATION_PER_REQUEST = 'aztec.tx_collector.duration_per_request';
 export const TX_COLLECTOR_DURATION_PER_TX = 'aztec.tx_collector.duration_per_tx';
 
-export const IVC_VERIFIER_TIME = 'aztec.ivc_verifier.time';
-export const IVC_VERIFIER_TOTAL_TIME = 'aztec.ivc_verifier.total_time';
-export const IVC_VERIFIER_FAILURE_COUNT = 'aztec.ivc_verifier.failure_count';
+export const CHONK_VERIFIER_TIME = 'aztec.ivc_verifier.time';
+export const CHONK_VERIFIER_TOTAL_TIME = 'aztec.ivc_verifier.total_time';
+export const CHONK_VERIFIER_FAILURE_COUNT = 'aztec.ivc_verifier.failure_count';
 
-export const IVC_VERIFIER_AGG_DURATION_MIN = 'aztec.ivc_verifier.agg_duration_min';
-export const IVC_VERIFIER_AGG_DURATION_MAX = 'aztec.ivc_verifier.agg_duration_max';
-export const IVC_VERIFIER_AGG_DURATION_P50 = 'aztec.ivc_verifier.agg_duration_p50';
-export const IVC_VERIFIER_AGG_DURATION_P90 = 'aztec.ivc_verifier.agg_duration_p90';
-export const IVC_VERIFIER_AGG_DURATION_AVG = 'aztec.ivc_verifier.agg_duration_avg';
+export const CHONK_VERIFIER_AGG_DURATION_MIN = 'aztec.ivc_verifier.agg_duration_min';
+export const CHONK_VERIFIER_AGG_DURATION_MAX = 'aztec.ivc_verifier.agg_duration_max';
+export const CHONK_VERIFIER_AGG_DURATION_P50 = 'aztec.ivc_verifier.agg_duration_p50';
+export const CHONK_VERIFIER_AGG_DURATION_P90 = 'aztec.ivc_verifier.agg_duration_p90';
+export const CHONK_VERIFIER_AGG_DURATION_AVG = 'aztec.ivc_verifier.agg_duration_avg';
