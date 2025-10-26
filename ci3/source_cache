@@ -1,6 +1,9 @@
 # Disk-based cache system for CI logs.
 # Logs are written to /logs-disk on bastion via SSH.
 
+# Source Redis functions first
+source ${ci3}/source_redis
+
 # Transfer log to bastion via SSH (accepts gzipped data on stdin)
 # Usage: cat file.gz | cache_disk_transfer <key>
 function cache_disk_transfer {
@@ -15,5 +18,28 @@ function cache_disk_transfer {
       "cat > /logs-disk/${key}.log.gz" &>/dev/null
 }
 
+# Persistent cache function that writes to both Redis and disk
+function cache_persistent {
+  local key="$1"
+  local expire="$2"
+  local tmpfile="/tmp/cache_log_$$_${key}.gz"
+
+  # Save gzipped data to temp file (synchronous - must complete first)
+  cat | gzip > "$tmpfile"
+
+  # Write to Redis (synchronous - must complete before returning)
+  cat "$tmpfile" | redis_cli -x SETEX "$key" "$expire" &>/dev/null
+
+  # Transfer to bastion disk in background
+  if [ "${CI:-0}" -eq 1 ]; then
+    {
+      cat "$tmpfile" | cache_disk_transfer "$key"
+      rm -f "$tmpfile"
+    } &
+  else
+    rm -f "$tmpfile"
+  fi
+}
+
 # Export functions
-export -f cache_disk_transfer
+export -f cache_disk_transfer cache_persistent

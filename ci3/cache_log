@@ -3,7 +3,7 @@
 # If a redis cache is available, redirect input into a cache log.
 # If DUP=1 then we duplicate input also to stdout.
 NO_CD=1 source $(git rev-parse --show-toplevel)/ci3/source
-source $ci3/source_redis
+source $ci3/source_cache
 
 name=$1
 
@@ -18,7 +18,7 @@ function publish_log {
 }
 
 function publish_log_final {
-  cat $outfile | redis_setexz_with_disk $key $CI_REDIS_EXPIRE
+  cat $outfile | cache_persistent $key $CI_REDIS_EXPIRE
 }
 
 function live_publish_log {
