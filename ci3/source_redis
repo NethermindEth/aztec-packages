@@ -2,7 +2,7 @@
 # Also supports disk-based logging with fallback.
 
 # Source disk logging functions
-source ${ci3}/source_disk_logs
+source ${ci3}/source_cache
 
 # Declare CI_REDIS host, allowing override.
 export CI_REDIS=${CI_REDIS:-localhost}
@@ -67,14 +67,22 @@ function redis_setexz {
 function redis_setexz_with_disk {
   local key="$1"
   local expire="$2"
-  local data=$(cat | gzip)
+  local tmpfile="/tmp/redis_log_$$_${key}.gz"
 
-  # Write to Redis
-  echo "$data" | redis_cli -x SETEX "$key" "$expire" &>/dev/null
+  # Save gzipped data to temp file (synchronous - must complete first)
+  cat | gzip > "$tmpfile"
 
-  # Also transfer to bastion disk in CI (async)
+  # Write to Redis (synchronous - must complete before returning)
+  cat "$tmpfile" | redis_cli -x SETEX "$key" "$expire" &>/dev/null
+
+  # Transfer to bastion disk in background
   if [ "${CI:-0}" -eq 1 ]; then
-    echo "$data" | disk_log_transfer "$key" &
+    {
+      cat "$tmpfile" | cache_disk_transfer "$key"
+      rm -f "$tmpfile"
+    } &
+  else
+    rm -f "$tmpfile"
   fi
 }
 

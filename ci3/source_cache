@@ -1,9 +1,9 @@
-# Disk-based logging system with synchronous SSH transfer to bastion.
-# Logs are written to /logs-disk on bastion via SCP.
+# Disk-based cache system for CI logs.
+# Logs are written to /logs-disk on bastion via SSH.
 
 # Transfer log to bastion via SSH (accepts gzipped data on stdin)
-# Usage: echo "$gzipped_data" | disk_log_transfer <key>
-function disk_log_transfer {
+# Usage: cat file.gz | cache_disk_transfer <key>
+function cache_disk_transfer {
   local key="$1"
 
   # Transfer via SSH pipe directly to file on bastion
@@ -16,4 +16,4 @@ function disk_log_transfer {
 }
 
 # Export functions
-export -f disk_log_transfer
+export -f cache_disk_transfer
