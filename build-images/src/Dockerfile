@@ -388,8 +388,9 @@ COPY environment /etc/environment
 
 # Bump thread limits in line with whatever the container is launched with.
 RUN sed -i 's/^#\?DefaultTasksMax=.*/DefaultTasksMax=infinity/' /etc/systemd/system.conf
-RUN mkdir -p /etc/systemd/user.conf.d /etc/systemd/user/user.slice.d && \
+RUN mkdir -p /etc/systemd/user.conf.d /etc/systemd/user/user.slice.d /etc/systemd/system/user-.slice.d && \
     printf "[Manager]\nDefaultTasksMax=infinity\n" > /etc/systemd/user.conf.d/override.conf && \
-    printf "[Slice]\nTasksMax=infinity\n" > /etc/systemd/user/user.slice.d/override.conf
+    printf "[Slice]\nTasksMax=infinity\n" > /etc/systemd/user/user.slice.d/override.conf && \
+    printf "[Slice]\nTasksMax=infinity\n" > /etc/systemd/system/user-.slice.d/override.conf
 
 EXPOSE 22
