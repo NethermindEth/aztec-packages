@@ -132,6 +132,7 @@ container_script=$(
   git checkout -b \$REF_NAME
   source ci3/source
   source ci3/source_refname
+  source ci3/source_redis
   source ci3/source_cache
   ci_log_id=\$(log_ci_run)
   export PARENT_LOG_URL=${PARENT_LOG_URL:-http://ci.aztec-labs.com/\$ci_log_id}

@@ -1,8 +1,6 @@
 # Disk-based cache system for CI logs.
 # Logs are written to /logs-disk on bastion via SSH.
-
-# Source Redis functions first
-source ${ci3}/source_redis
+# NOTE: This file depends on source_redis being sourced first.
 
 # Transfer log to bastion via SSH (accepts gzipped data on stdin)
 # Usage: cat file.gz | cache_disk_transfer <key>
