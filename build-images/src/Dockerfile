@@ -233,6 +233,10 @@ RUN mkdir -p -m 755 /etc/apt/keyrings && wget -qO- https://cli.github.com/packag
 # Install gt (graphite).
 RUN npm install -g @withgraphite/graphite-cli@stable
 
+# Install ldid for mac cross-compile signing.
+RUN curl -sL https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64 -o /usr/local/bin/ldid \
+    && chmod +x /usr/local/bin/ldid
+
 # fzf seems to not install this file for some reason.
 COPY ./key-bindings.zsh /usr/share/doc/fzf/examples/key-bindings.zsh
 
@@ -356,6 +360,9 @@ STOPSIGNAL SIGRTMIN+3
 ENTRYPOINT [ "/sbin/init", "--log-level=err" ]
 
 ###################### END OF STOCK NESTYBOX SYSTEMD CONTAINER ###############################
+
+# Bump thread limits in line with whatever the container is launched with.
+RUN sed -i 's/^#\?DefaultTasksMax=.*/DefaultTasksMax=infinity/' /etc/systemd/system.conf
 
 # Install docker.
 COPY docker_daemon.json /etc/docker/daemon.json
