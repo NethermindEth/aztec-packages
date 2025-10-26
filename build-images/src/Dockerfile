@@ -370,8 +370,6 @@ RUN curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh \
     # Add user "ubuntu" to the Docker group
     && usermod -a -G docker ubuntu
 RUN curl -fsSL https://raw.githubusercontent.com/docker/docker-ce/master/components/cli/contrib/completion/bash/docker -o /etc/bash_completion.d/docker.sh
-# Temp hack to downgrade containerd.io: https://github.com/opencontainers/runc/issues/4542
-RUN apt install containerd.io=1.6.33-1 --allow-downgrades -y
 
 # Install sshd.
 RUN apt install --no-install-recommends -y openssh-server \
