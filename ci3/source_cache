@@ -7,10 +7,8 @@
 function cache_disk_transfer {
   local key="$1"
 
-  # Transfer via SSH pipe directly to file on bastion
+  # Transfer via SSH pipe using persistent multiplexed connection
   ssh -F "${ci3}/aws/build_instance_ssh_config" \
-      -o ControlMaster=auto \
-      -o ControlPath=/tmp/ssh_mux_%h_%p_%r \
       -o ConnectTimeout=5 \
       ci-bastion.aztecprotocol.com \
       "cat > /logs-disk/${key}.log.gz" &>/dev/null
