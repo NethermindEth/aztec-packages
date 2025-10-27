@@ -5,7 +5,6 @@ import {
   bigIntToBufferBE,
   bigIntToUint8ArrayBE,
 } from '../bigint-array/index.js';
-import { BufferReader } from '../serialize/index.js';
 
 /**
  * Internal Fr field class for tests.
@@ -42,14 +41,18 @@ export class Fr {
     return new this(r);
   }
 
-  static fromBuffer(buffer: Uint8Array | Buffer | BufferReader) {
-    const reader = BufferReader.asReader(buffer);
-    return new this(reader.readBytes(this.SIZE_IN_BYTES));
+  static fromBuffer(buffer: Uint8Array | Buffer) {
+    if (buffer.length !== this.SIZE_IN_BYTES) {
+      throw new Error(`Expected ${this.SIZE_IN_BYTES} bytes, got ${buffer.length}`);
+    }
+    return new this(buffer);
   }
 
-  static fromBufferReduce(buffer: Uint8Array | BufferReader) {
-    const reader = BufferReader.asReader(buffer);
-    return new this(uint8ArrayToBigIntBE(reader.readBytes(this.SIZE_IN_BYTES)) % Fr.MODULUS);
+  static fromBufferReduce(buffer: Uint8Array | Buffer) {
+    if (buffer.length !== this.SIZE_IN_BYTES) {
+      throw new Error(`Expected ${this.SIZE_IN_BYTES} bytes, got ${buffer.length}`);
+    }
+    return new this(uint8ArrayToBigIntBE(buffer instanceof Buffer ? new Uint8Array(buffer) : buffer) % Fr.MODULUS);
   }
 
   static fromString(str: string) {
