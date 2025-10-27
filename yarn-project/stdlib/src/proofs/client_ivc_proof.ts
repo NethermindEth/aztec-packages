@@ -43,10 +43,6 @@ export class ClientIvcProof {
     return bufferSchemaFor(ClientIvcProof);
   }
 
-  toJSON() {
-    return this.toBuffer();
-  }
-
   static fromBuffer(buffer: Buffer | BufferReader): ClientIvcProof {
     const reader = BufferReader.asReader(buffer);
     const proofLength = reader.readNumber();
@@ -70,6 +66,11 @@ export class ClientIvcProofWithPublicInputs {
     }
   }
 
+  public getPublicInputs() {
+    const numPublicInputs = this.fieldsWithPublicInputs.length - CIVC_PROOF_LENGTH;
+    return this.fieldsWithPublicInputs.slice(0, numPublicInputs);
+  }
+
   public removePublicInputs() {
     const numPublicInputs = this.fieldsWithPublicInputs.length - CIVC_PROOF_LENGTH;
     return new ClientIvcProof(this.fieldsWithPublicInputs.slice(numPublicInputs));
@@ -85,10 +86,6 @@ export class ClientIvcProofWithPublicInputs {
 
   static get schema() {
     return bufferSchemaFor(ClientIvcProofWithPublicInputs);
-  }
-
-  toJSON() {
-    return this.toBuffer();
   }
 
   static fromBuffer(buffer: Buffer | BufferReader): ClientIvcProofWithPublicInputs {
