@@ -72,21 +72,24 @@ function publish_log {
   } | redis_setexz $key $CI_REDIS_EXPIRE
 }
 
+function _format_log_output {
+  echo "Parent Log: ${PARENT_LOG_URL:-none}"
+  echo "Command: $cmd"
+  echo "Date: $(date)"
+  echo "Status: $status"
+  echo "Took: ${time}"
+  echo
+  cat $outfile
+}
+
+function publish_log {
+  [ "$CI_REDIS_AVAILABLE" -eq 0 ] && return
+  _format_log_output | redis_setexz $key $CI_REDIS_EXPIRE
+}
+
 function publish_log_final {
-  if [ "$CI_REDIS_AVAILABLE" -eq 0 ]; then
-    return
-  fi
-
-  {
-    echo "Parent Log: ${PARENT_LOG_URL:-none}"
-    echo "Command: $cmd"
-    echo "Date: $(date)"
-    echo "Status: $status"
-    echo "Took: ${time}"
-    echo
-
-    cat $outfile
-  } | cache_persistent $key $CI_REDIS_EXPIRE
+  [ "$CI_REDIS_AVAILABLE" -eq 0 ] && return
+  _format_log_output | cache_persistent $key $CI_REDIS_EXPIRE
 }
 
 function live_publish_log {
