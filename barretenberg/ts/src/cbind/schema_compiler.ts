@@ -399,6 +399,13 @@ export class SchemaCompiler {
         return { typeName: 'string' };
       case 'bin32':
         return { typeName: 'Uint8Array' };
+      case 'field2':
+        // field2 is an extension field type (fq2) represented as a tuple of two Uint8Arrays
+        return {
+          typeName: 'Field2',
+          msgpackTypeName: '[Uint8Array, Uint8Array]',
+          declaration: 'export type Field2 = [Uint8Array, Uint8Array];',
+        };
       default:
         return { typeName: pascalCase(schema) };
     }
