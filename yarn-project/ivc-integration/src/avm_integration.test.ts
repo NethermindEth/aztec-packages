@@ -88,7 +88,11 @@ describe('AVM Integration', () => {
 
   beforeAll(async () => {
     const chonkProofPath = await getWorkingDirectory('bb-avm-integration-chonk-');
-    bbBinaryPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../../barretenberg/cpp/build/bin', 'bb');
+    bbBinaryPath = path.join(
+      path.dirname(fileURLToPath(import.meta.url)),
+      '../../../barretenberg/cpp/build/bin',
+      'bb-avm',
+    );
     const [bytecodes, witnessStack, tailPublicInputs, vks] = await generateTestingIVCStack(1, 0);
     chonkPublicInputs = tailPublicInputs;
     chonkProof = await proveChonk(bbBinaryPath, chonkProofPath, witnessStack, bytecodes, vks, logger);
