@@ -211,13 +211,17 @@ function run {
   if [ -f ${NETWORK_ENV_FILE} ]; then
     export NETWORK_ENV_FILE_B64=$(cat ${NETWORK_ENV_FILE} | base64 -w 0)
   fi
-  # if the build instance key exists, load it into a base64 encoded string
-  if [ -f ~/.ssh/build_instance_key ]; then
-    export BUILD_INSTANCE_KEY_B64=$(cat ~/.ssh/build_instance_key | base64 -w 0)
-  fi
-  # if the build instance ssh config exists, load it into a base64 encoded string
-  if [ -f $ci3/aws/build_instance_ssh_config ]; then
-    export BUILD_INSTANCE_SSH_CONFIG_B64=$(cat $ci3/aws/build_instance_ssh_config | base64 -w 0)
+  # Only pass SSH keys for internal CI (not external/fork PRs)
+  # External CI has REF_NAME starting with "repo-fork/"
+  if [[ ! "$REF_NAME" =~ ^repo-fork/ ]]; then
+    # if the build instance key exists, load it into a base64 encoded string
+    if [ -f ~/.ssh/build_instance_key ]; then
+      export BUILD_INSTANCE_KEY_B64=$(cat ~/.ssh/build_instance_key | base64 -w 0)
+    fi
+    # if the build instance ssh config exists, load it into a base64 encoded string
+    if [ -f $ci3/aws/build_instance_ssh_config ]; then
+      export BUILD_INSTANCE_SSH_CONFIG_B64=$(cat $ci3/aws/build_instance_ssh_config | base64 -w 0)
+    fi
   fi
 
   ssh ${ssh_args:-} -F $ci3/aws/build_instance_ssh_config ubuntu@$ip "

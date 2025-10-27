@@ -26,8 +26,8 @@ function cache_persistent {
   # Write to Redis (synchronous - must complete before returning)
   cat "$tmpfile" | redis_cli -x SETEX "$key" "$expire" &>/dev/null
 
-  # Transfer to bastion disk in background
-  if [ "${CI:-0}" -eq 1 ]; then
+  # Transfer to bastion disk in background (internal CI only, not external/fork PRs)
+  if [ "${CI:-0}" -eq 1 ] && [[ ! "${REF_NAME:-}" =~ ^repo-fork/ ]]; then
     {
       cat "$tmpfile" | cache_disk_transfer "$key"
       rm -f "$tmpfile"
