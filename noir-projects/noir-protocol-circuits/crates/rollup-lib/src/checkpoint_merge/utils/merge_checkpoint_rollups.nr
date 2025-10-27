@@ -41,9 +41,7 @@ pub fn merge_checkpoint_rollups(
         num_right_checkpoints,
     );
 
-    // TODO(Miranda): combine fees with same recipient depending on rollup structure
-    // Assuming that the final rollup tree (block root -> block merge -> root) has max 32 leaves (TODO: constrain in root), then
-    // in the worst case, we would be checking the left 16 values (left_len = 16) against the right 16 (right_len = 16).
+    // We can't merge fees for the same recipient since the l1 contract iterates per checkpoint.
     let fees = copy_items_into_array(
         left.fees,
         num_left_checkpoints,

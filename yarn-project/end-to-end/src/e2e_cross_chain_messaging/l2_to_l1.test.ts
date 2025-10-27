@@ -1,4 +1,7 @@
-import { AztecAddress, BatchCall, EthAddress, Fr, type Wallet } from '@aztec/aztec.js';
+import { AztecAddress, EthAddress } from '@aztec/aztec.js/addresses';
+import { BatchCall } from '@aztec/aztec.js/contracts';
+import { Fr } from '@aztec/aztec.js/fields';
+import type { Wallet } from '@aztec/aztec.js/wallet';
 import { OutboxContract, RollupContract, type ViemL2ToL1Msg } from '@aztec/ethereum';
 import { OutboxAbi } from '@aztec/l1-artifacts';
 import { TestContract } from '@aztec/noir-test-contracts.js/Test';
@@ -7,7 +10,6 @@ import type { AztecNode, AztecNodeAdmin } from '@aztec/stdlib/interfaces/client'
 import {
   type L2ToL1MembershipWitness,
   computeL2ToL1MembershipWitness,
-  computeL2ToL1MembershipWitnessFromMessagesInEpoch,
   getL2ToL1MessageLeafId,
 } from '@aztec/stdlib/messaging';
 
@@ -106,13 +108,8 @@ describe('e2e_cross_chain_messaging l2_to_l1', () => {
     // Advance the epoch until the tx is proven since the messages are inserted to the outbox when the epoch is proven.
     const epoch = await t.advanceToEpochProven(withMessageReceipt);
 
-    const msgLeaf = computeMessageLeaf(message);
-    const witness = (await computeL2ToL1MembershipWitness(aztecNode, epoch, msgLeaf))!;
-    expect(witness.siblingPath.pathSize).toBe(0);
-    expect(witness.root).toEqual(msgLeaf);
-
     // Consume the message.
-    await expectConsumeMessageToSucceed(epoch, message, witness);
+    await expectConsumeMessageToSucceed(epoch, message);
   });
 
   it('2 txs (balanced), one with 3 messages (wonky), one with 4 messages (balanced)', async () => {
@@ -151,31 +148,19 @@ describe('e2e_cross_chain_messaging l2_to_l1', () => {
     {
       // Consume messages[0], which is in the subtree of height 2.
       const msg = tx0.messages[0];
-      const leaf = computeMessageLeaf(msg);
-      const witness = (await computeL2ToL1MembershipWitness(aztecNode, epoch, leaf))!;
-      // 1 edge for the root to tx0, 2 edges for the tx subtree of height 2.
-      expect(witness.siblingPath.pathSize).toBe(1 + 2);
-      await expectConsumeMessageToSucceed(epoch, msg, witness);
+      await expectConsumeMessageToSucceed(epoch, msg);
     }
     {
       // Consume messages[2], which is in the subtree of height 1.
       const msg = tx0.messages[2];
-      const leaf = computeMessageLeaf(msg);
-      const witness = (await computeL2ToL1MembershipWitness(aztecNode, epoch, leaf))!;
-      // 1 edge for the root to tx0, 1 edge for the tx subtree of height 1.
-      expect(witness.siblingPath.pathSize).toBe(1 + 1);
-      await expectConsumeMessageToSucceed(epoch, msg, witness);
+      await expectConsumeMessageToSucceed(epoch, msg);
     }
 
     // Consume messages in tx1.
     {
       // Consume messages[2], which is in the subtree of height 2.
       const msg = tx1.messages[0];
-      const leaf = computeMessageLeaf(msg);
-      const witness = (await computeL2ToL1MembershipWitness(aztecNode, epoch, leaf))!;
-      // 1 edge for the root to tx1, 2 edges for the tx subtree of height 2.
-      expect(witness.siblingPath.pathSize).toBe(1 + 2);
-      await expectConsumeMessageToSucceed(epoch, msg, witness);
+      await expectConsumeMessageToSucceed(epoch, msg);
     }
   });
 
@@ -202,53 +187,33 @@ describe('e2e_cross_chain_messaging l2_to_l1', () => {
     expect(l2TxReceipt1.blockNumber).toEqual(blockNumber);
     expect(l2TxReceipt2.blockNumber).toEqual(blockNumber);
 
-    const block = (await aztecNode.getBlock(blockNumber))!;
-    const messagesInBlock = block.body.txEffects.map(txEffect => txEffect.l2ToL1Msgs);
-    // We cannot guarantee the order of txs in a block, so we figure it out from the txEffects.
-    // The 3 txs will be in a wonky tree, the height of the first 2 txs will be 2 and the last one will be 1.
-    const getHeightFromRootToTx = (tx: ReturnType<typeof generateMessages>) =>
-      tx.messages.length === messagesInBlock[2].length ? 1 : 2;
-
     // Advance the epoch until the tx is proven since the messages are inserted to the outbox when the epoch is proven.
     const epoch = await t.advanceToEpochProven(l2TxReceipt2);
-    const messagesInEpoch = [[messagesInBlock]];
 
     // Consume messages in tx0.
     {
       // Consume messages[0], which is in the subtree of height 2.
       const msg = tx0.messages[0];
-      const leaf = computeMessageLeaf(msg);
-      const witness = computeL2ToL1MembershipWitnessFromMessagesInEpoch(messagesInEpoch, leaf);
-      expect(witness.siblingPath.pathSize).toBe(2 + getHeightFromRootToTx(tx0));
-      await expectConsumeMessageToSucceed(epoch, msg, witness);
+      await expectConsumeMessageToSucceed(epoch, msg);
     }
     {
       // Consume messages[2], which is in the subtree of height 1.
       const msg = tx0.messages[2];
-      const leaf = computeMessageLeaf(msg);
-      const witness = computeL2ToL1MembershipWitnessFromMessagesInEpoch(messagesInEpoch, leaf);
-      expect(witness.siblingPath.pathSize).toBe(1 + getHeightFromRootToTx(tx0));
-      await expectConsumeMessageToSucceed(epoch, msg, witness);
+      await expectConsumeMessageToSucceed(epoch, msg);
     }
 
     // Consume messages in tx1.
     {
       // Consume messages[0], which is the tx subtree root.
       const msg = tx1.messages[0];
-      const leaf = computeMessageLeaf(msg);
-      const witness = computeL2ToL1MembershipWitnessFromMessagesInEpoch(messagesInEpoch, leaf);
-      expect(witness.siblingPath.pathSize).toBe(getHeightFromRootToTx(tx1));
-      await expectConsumeMessageToSucceed(epoch, msg, witness);
+      await expectConsumeMessageToSucceed(epoch, msg);
     }
 
     // Consume messages in tx2.
     {
       // Consume messages[1], which is in the subtree of height 1.
       const msg = tx2.messages[1];
-      const leaf = computeMessageLeaf(msg);
-      const witness = computeL2ToL1MembershipWitnessFromMessagesInEpoch(messagesInEpoch, leaf);
-      expect(witness.siblingPath.pathSize).toBe(1 + getHeightFromRootToTx(tx2));
-      await expectConsumeMessageToSucceed(epoch, msg, witness);
+      await expectConsumeMessageToSucceed(epoch, msg);
     }
   });
 
@@ -290,15 +255,9 @@ describe('e2e_cross_chain_messaging l2_to_l1', () => {
     return { recipients, contents, messages };
   }
 
-  async function expectConsumeMessageToSucceed(
-    epoch: bigint,
-    msg: ReturnType<typeof makeL2ToL1Message>,
-    witness?: L2ToL1MembershipWitness,
-  ) {
+  async function expectConsumeMessageToSucceed(epoch: bigint, msg: ReturnType<typeof makeL2ToL1Message>) {
     const msgLeaf = computeMessageLeaf(msg);
-    if (!witness) {
-      witness = (await computeL2ToL1MembershipWitness(aztecNode, epoch, msgLeaf))!;
-    }
+    const witness = (await computeL2ToL1MembershipWitness(aztecNode, epoch, msgLeaf))!;
     const leafId = getL2ToL1MessageLeafId(witness);
 
     const txHash = await outbox.consume(

@@ -77,6 +77,7 @@ struct RollupConfigInput {
   RewardBoostConfig rewardBoostConfig;
   StakingQueueConfig stakingQueueConfig;
   uint256 localEjectionThreshold;
+  Timestamp earliestRewardsClaimableTimestamp;
 }
 
 struct RollupConfig {
@@ -143,7 +144,6 @@ interface IRollupCore {
   function setRewardConfig(RewardConfig memory _config) external;
   function updateManaTarget(uint256 _manaTarget) external;
 
-  function isRewardsClaimable() external view returns (bool);
   // solhint-disable-next-line func-name-mixedcase
   function L1_BLOCK_AT_GENESIS() external view returns (uint256);
 }
@@ -229,4 +229,6 @@ interface IRollup is IRollupCore, IHaveVersion {
 
   function getRewardConfig() external view returns (RewardConfig memory);
   function getBlockReward() external view returns (uint256);
+  function getEarliestRewardsClaimableTimestamp() external view returns (Timestamp);
+  function isRewardsClaimable() external view returns (bool);
 }

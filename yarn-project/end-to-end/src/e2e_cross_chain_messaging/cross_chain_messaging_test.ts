@@ -1,14 +1,9 @@
 import type { AztecNodeConfig } from '@aztec/aztec-node';
-import {
-  AztecAddress,
-  type AztecNode,
-  EthAddress,
-  type Logger,
-  TxReceipt,
-  createLogger,
-  sleep,
-  waitForProven,
-} from '@aztec/aztec.js';
+import { AztecAddress, EthAddress } from '@aztec/aztec.js/addresses';
+import { waitForProven } from '@aztec/aztec.js/contracts';
+import { type Logger, createLogger } from '@aztec/aztec.js/log';
+import type { AztecNode } from '@aztec/aztec.js/node';
+import type { TxReceipt } from '@aztec/aztec.js/tx';
 import { CheatCodes } from '@aztec/aztec/testing';
 import {
   type DeployL1ContractsArgs,
@@ -20,6 +15,7 @@ import {
   createExtendedL1Client,
   deployL1Contract,
 } from '@aztec/ethereum';
+import { sleep } from '@aztec/foundation/sleep';
 import { TestERC20Abi, TestERC20Bytecode } from '@aztec/l1-artifacts';
 import { TokenContract } from '@aztec/noir-contracts.js/Token';
 import { TokenBridgeContract } from '@aztec/noir-contracts.js/TokenBridge';

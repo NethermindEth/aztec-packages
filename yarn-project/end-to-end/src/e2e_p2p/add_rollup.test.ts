@@ -1,6 +1,9 @@
 import { type InitialAccountData, getInitialTestAccountsData } from '@aztec/accounts/testing';
 import type { AztecNodeService } from '@aztec/aztec-node';
-import { AztecAddress, EthAddress, Fr, generateClaimSecret, retryUntil, sleep, waitForProven } from '@aztec/aztec.js';
+import { AztecAddress, EthAddress } from '@aztec/aztec.js/addresses';
+import { waitForProven } from '@aztec/aztec.js/contracts';
+import { generateClaimSecret } from '@aztec/aztec.js/ethereum';
+import { Fr } from '@aztec/aztec.js/fields';
 import { RollupCheatCodes } from '@aztec/aztec/testing';
 import { createBlobSinkServer } from '@aztec/blob-sink/server';
 import {
@@ -14,6 +17,8 @@ import {
   deployL1Contract,
   deployRollupForUpgrade,
 } from '@aztec/ethereum';
+import { retryUntil } from '@aztec/foundation/retry';
+import { sleep } from '@aztec/foundation/sleep';
 import {
   GovernanceAbi,
   GovernanceProposerAbi,
@@ -538,7 +543,7 @@ describe('e2e_p2p_add_rollup', () => {
       l1Contracts: newConfig.l1Contracts,
       port: blobSinkPort,
       dataDirectory: newConfig.dataDirectory,
-      dataStoreMapSizeKB: newConfig.dataStoreMapSizeKB,
+      dataStoreMapSizeKb: newConfig.dataStoreMapSizeKb,
     });
     await blobSink.start();
     await sleep(4000);

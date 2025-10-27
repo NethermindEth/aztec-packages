@@ -1,4 +1,7 @@
-import { AztecAddress, type AztecNode, EthAddress, Fr, type Logger } from '@aztec/aztec.js';
+import { AztecAddress, EthAddress } from '@aztec/aztec.js/addresses';
+import { Fr } from '@aztec/aztec.js/fields';
+import type { Logger } from '@aztec/aztec.js/log';
+import type { AztecNode } from '@aztec/aztec.js/node';
 import type { TokenContract } from '@aztec/noir-contracts.js/Token';
 import type { TokenBridgeContract } from '@aztec/noir-contracts.js/TokenBridge';
 import { computeL2ToL1MembershipWitness } from '@aztec/stdlib/messaging';
