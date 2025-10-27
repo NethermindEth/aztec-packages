@@ -10,6 +10,7 @@ import {SafeCast} from "@oz/utils/math/SafeCast.sol";
 
 import {Registry} from "@aztec/governance/Registry.sol";
 import {Inbox} from "@aztec/core/messagebridge/Inbox.sol";
+import {Outbox} from "@aztec/core/messagebridge/Outbox.sol";
 import {Errors} from "@aztec/core/libraries/Errors.sol";
 import {ProposedHeader} from "@aztec/core/libraries/rollup/ProposedHeaderLib.sol";
 
@@ -853,5 +854,77 @@ contract RollupTest is RollupBase {
         proof: ""
       })
     );
+  }
+
+  function testShorterEpochProofCannotOverwriteOutHash() public setUpFor("mixed_block_1") {
+    // Propose two blocks in epoch 0
+    _proposeBlock("mixed_block_1", 1);
+    _proposeBlock("mixed_block_2", 2);
+
+    outbox = Outbox(address(rollup.getOutbox()));
+
+    DecoderBase.Data memory block1Data = load("mixed_block_1").block;
+    DecoderBase.Data memory block2Data = load("mixed_block_2").block;
+    BlockLog memory blockLog = rollup.getBlock(0);
+
+    bytes32 outHash1 = bytes32(uint256(0x1111));
+    bytes32 outHash2 = bytes32(uint256(0x2222));
+
+    // Submit proof for blocks 1-2 with outHash1
+    _submitEpochProofWithOutHashAndFee(
+      1, 2, blockLog.archive, block2Data.archive, block2Data.batchedBlobInputs, outHash1, address(this), address(0), 0
+    );
+
+    // Verify the state after the first proof
+    assertEq(rollup.getProvenBlockNumber(), 2, "Proven block number should be 2");
+    assertEq(outbox.getRootData(Epoch.wrap(0)), outHash1, "OutHash should be outHash1");
+
+    // Attempt to submit proof for blocks 1-1 with outHash2 (shorter proof)
+    // This should not revert, but should not update anything
+    _submitEpochProofWithOutHashAndFee(
+      1, 1, blockLog.archive, block1Data.archive, block1Data.batchedBlobInputs, outHash2, address(this), address(0), 0
+    );
+
+    // Verify that the proven block number did NOT regress
+    assertEq(rollup.getProvenBlockNumber(), 2, "Proven block number should still be 2");
+
+    // Verify that the outHash did NOT change
+    assertEq(outbox.getRootData(Epoch.wrap(0)), outHash1, "OutHash should still be outHash1");
+  }
+
+  function testLongerEpochProofCanUpdateAfterShorterProof() public setUpFor("mixed_block_1") {
+    // Propose two blocks in epoch 0
+    _proposeBlock("mixed_block_1", 1);
+    _proposeBlock("mixed_block_2", 2);
+
+    outbox = Outbox(address(rollup.getOutbox()));
+
+    DecoderBase.Data memory block1Data = load("mixed_block_1").block;
+    DecoderBase.Data memory block2Data = load("mixed_block_2").block;
+    BlockLog memory blockLog = rollup.getBlock(0);
+
+    bytes32 outHash1 = bytes32(uint256(0x1111));
+    bytes32 outHash2 = bytes32(uint256(0x2222));
+
+    // Submit proof for blocks 1-1 with outHash1 (shorter proof first)
+    _submitEpochProofWithOutHashAndFee(
+      1, 1, blockLog.archive, block1Data.archive, block1Data.batchedBlobInputs, outHash1, address(this), address(0), 0
+    );
+
+    // Verify the state after the first proof
+    assertEq(rollup.getProvenBlockNumber(), 1, "Proven block number should be 1");
+    assertEq(outbox.getRootData(Epoch.wrap(0)), outHash1, "OutHash should be outHash1");
+
+    // Submit proof for blocks 1-2 with outHash2 (longer proof)
+    // This SHOULD update both the proven block number and the outHash
+    _submitEpochProofWithOutHashAndFee(
+      1, 2, blockLog.archive, block2Data.archive, block2Data.batchedBlobInputs, outHash2, address(this), address(0), 0
+    );
+
+    // Verify that the proven block number progressed to 2
+    assertEq(rollup.getProvenBlockNumber(), 2, "Proven block number should be 2");
+
+    // Verify that the outHash was updated to outHash2
+    assertEq(outbox.getRootData(Epoch.wrap(0)), outHash2, "OutHash should be outHash2");
   }
 }

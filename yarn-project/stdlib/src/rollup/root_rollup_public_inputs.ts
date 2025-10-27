@@ -21,7 +21,7 @@ export class RootRollupPublicInputs {
     public previousArchiveRoot: Fr,
     /** Root of the archive tree after this rollup is processed */
     public endArchiveRoot: Fr,
-    /** Root of the wonky tree consisting of the `out_hash` values from all checkpoints in this rollup. */
+    /** Root of the unbalanced merkle tree consisting of the `out_hash` values from all checkpoints in this rollup. */
     public outHash: Fr,
     /** Hashes of checkpoint headers for this rollup. */
     public checkpointHeaderHashes: Tuple<Fr, typeof AZTEC_MAX_EPOCH_DURATION>,

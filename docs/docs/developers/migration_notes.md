@@ -9,6 +9,35 @@ Aztec is in full-speed development. Literally every version breaks compatibility
 
 ## TBD
 
+### L2-to-L1 messages are now grouped by epoch.
+
+L2-to-L1 messages are now aggregated and organized per epoch rather than per block. This change affects how you compute membership witnesses for consuming messages on L1. You now need to know the epoch number in which the message was emitted to retrieve and consume the message.
+
+**Note**: This is only an API change. The protocol behavior remains the same - messages can still only be consumed once an epoch is proven as before.
+
+#### What changed
+
+Previously, you might have computed the membership witness without explicitly needing the epoch:
+
+```typescript
+const witness = await computeL2ToL1MembershipWitness(
+  node,
+  l2TxReceipt.blockNumber,
+  l2ToL1Message
+);
+```
+
+Now, you should provide the epoch number:
+
+```typescript
+const epoch = await rollup.getEpochNumberForBlock(l2TxReceipt.blockNumber);
+const witness = await computeL2ToL1MembershipWitness(
+  node,
+  epoch,
+  l2ToL1Message
+);
+```
+
 ### `msg_sender` is now an `Option<AztecAddress>` type.
 
 Because Aztec has native account abstraction, the very first function call of a tx has no `msg_sender`. (Recall, the first function call of an Aztec transaction is always a _private_ function call).
@@ -102,7 +131,6 @@ When lining up a new tx, the `FunctionCall` struct has been extended to include 
 - `is_public & !hide_msg_sender` -- will make a public call with a visible `msg_sender`, as was the case before this new feature.
 - `!is_public & hide_msg_sender` -- Incompatible flags.
 - `!is_public & !hide_msg_sender` -- will make a private call with a visible `msg_sender` (noting that since it's a private function call, the `msg_sender` will only be visible to the called private function, but not to the rest of the world).
-
 
 ## [cli-wallet]
 

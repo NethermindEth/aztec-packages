@@ -116,13 +116,17 @@ library EpochProofLib {
     require(verifyEpochRootProof(_args), Errors.Rollup__InvalidProof());
 
     RollupStore storage rollupStore = STFLib.getStorage();
-    rollupStore.tips =
-      rollupStore.tips.updateProvenBlockNumber(Math.max(rollupStore.tips.getProvenBlockNumber(), _args.end));
 
-    // Handle L2->L1 message processing
-    if (_args.args.outHash != bytes32(0)) {
-      // Insert L2->L1 messages into outbox for consumption.
-      rollupStore.config.outbox.insert(endEpoch, _args.args.outHash);
+    // Advance the proven block number and insert the out hash if the chain is extended.
+    if (_args.end > rollupStore.tips.getProvenBlockNumber()) {
+      rollupStore.tips =
+        rollupStore.tips.updateProvenBlockNumber(Math.max(rollupStore.tips.getProvenBlockNumber(), _args.end));
+
+      // Handle L2->L1 message processing:
+      if (_args.args.outHash != bytes32(0)) {
+        // Insert L2->L1 messages root into outbox for consumption.
+        rollupStore.config.outbox.insert(endEpoch, _args.args.outHash);
+      }
     }
 
     RewardLib.handleRewardsAndFees(_args, endEpoch);

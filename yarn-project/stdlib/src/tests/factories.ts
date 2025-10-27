@@ -755,7 +755,7 @@ export function makeCheckpointRollupPublicInputs(seed = 0) {
     makeEpochConstantData(seed),
     makeAppendOnlyTreeSnapshot(seed + 0x100),
     makeAppendOnlyTreeSnapshot(seed + 0x200),
-    fr(seed + 0x300),
+    makeTuple(AZTEC_MAX_EPOCH_DURATION, () => fr(seed), 0x300),
     makeTuple(AZTEC_MAX_EPOCH_DURATION, () => fr(seed), 0x400),
     makeTuple(AZTEC_MAX_EPOCH_DURATION, () => makeFeeRecipient(seed), 0x700),
     BlobAccumulator.fromBatchedBlobAccumulator(startBlobAccumulator),

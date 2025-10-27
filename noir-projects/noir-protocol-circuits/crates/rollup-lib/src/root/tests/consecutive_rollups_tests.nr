@@ -1,4 +1,9 @@
+use crate::root::utils::compute_final_out_hash::compute_final_out_hash;
 use super::TestBuilder;
+use types::{
+    constants::{AZTEC_MAX_EPOCH_DURATION, CHECKPOINT_MERGE_ROLLUP_VK_INDEX},
+    tests::utils::pad_end,
+};
 
 // Note: We only test a few cases here to ensure the code path is triggered. More comprehensive tests for validating
 // consecutive rollups can be found in `checkpoint_merge/tests/consecutive_checkpoint_rollups_tests.nr`.
@@ -8,19 +13,6 @@ fn correct_default_inputs() {
     let builder = TestBuilder::default();
     let pi = builder.execute();
     builder.assert_expected_public_inputs(pi);
-}
-
-#[test]
-fn propagate_right_out_hash_when_left_is_zero() {
-    let mut builder = TestBuilder::default();
-
-    builder.left_rollup.out_hash = 0;
-    builder.right_rollup.out_hash = 123;
-
-    let pi = builder.execute();
-    builder.assert_expected_public_inputs(pi);
-
-    assert_eq(pi.out_hash, 123);
 }
 
 #[test(should_fail_with = "Mismatched constants in checkpoint rollups")]
@@ -41,4 +33,28 @@ fn non_consecutive_archives() {
     builder.right_rollup.previous_archive.root += 1;
 
     builder.execute_and_fail();
+}
+
+#[test]
+fn correct_final_out_hash() {
+    let mut builder = TestBuilder::new(
+        CHECKPOINT_MERGE_ROLLUP_VK_INDEX,
+        4,
+        CHECKPOINT_MERGE_ROLLUP_VK_INDEX,
+        2,
+    );
+
+    builder.left_rollup.out_hashes[0] = 11;
+    builder.left_rollup.out_hashes[1] = 0;
+    builder.left_rollup.out_hashes[2] = 0;
+    builder.left_rollup.out_hashes[3] = 44;
+    builder.right_rollup.out_hashes[0] = 0;
+    builder.right_rollup.out_hashes[1] = 66;
+
+    let pi = builder.execute();
+    builder.assert_expected_public_inputs(pi);
+
+    let checkpoint_out_hashes: [Field; AZTEC_MAX_EPOCH_DURATION] = pad_end([11, 0, 0, 44, 0, 66]);
+    let expected_out_hash = compute_final_out_hash(checkpoint_out_hashes);
+    assert_eq(pi.out_hash, expected_out_hash);
 }

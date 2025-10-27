@@ -358,7 +358,7 @@ describe('UnbalancedMerkleTreeCalculator', () => {
       expectSiblingPathToThrow(3, 'Leaf at index 3 has been compressed.');
     });
 
-    it('with large tree most zero leaves', () => {
+    it('with large tree most zero leaves, one leaf from each subtree', () => {
       // 99 = subtrees of sizes 64, 32, 2, 1
       // Final tree:
       //      root
@@ -382,6 +382,31 @@ describe('UnbalancedMerkleTreeCalculator', () => {
 
       expectSiblingPathToThrow(10, 'Leaf at index 10 has been compressed.');
       expectSiblingPathToThrow(96, 'Leaf at index 96 has been compressed.');
+    });
+
+    it('with large tree most zero leaves, one or no leaves from each subtree', () => {
+      //             root             --->        root
+      //        /            \                   /   \
+      //       .              .                 .     .
+      //    /     \          /  \              / \   / \
+      //   .       .        .    0            6  .  45 59
+      //  / \     / \     /   \                 / \
+      // .....   .....   . ... .              28  29
+      // |      / \      |     |
+      // 6 ... 28 29 ... 45...59...
+      createAndFillTree(65, [6, 28, 29, 45, 59]);
+
+      const root2829 = hasher(leaf(28), leaf(29));
+      const root62829 = hasher(leaf(6), root2829);
+      const root4559 = hasher(leaf(45), leaf(59));
+      const expectedRoot = hasher(root62829, root4559);
+      expect(tree.getRoot()).toEqual(expectedRoot);
+
+      expectSiblingPath(leaf(6), [root2829, root4559]);
+      expectSiblingPath(leaf(28), [leaf(29), leaf(6), root4559]);
+      expectSiblingPath(leaf(29), [leaf(28), leaf(6), root4559]);
+      expectSiblingPath(leaf(45), [leaf(59), root62829]);
+      expectSiblingPath(leaf(59), [leaf(45), root62829]);
     });
   });
 });

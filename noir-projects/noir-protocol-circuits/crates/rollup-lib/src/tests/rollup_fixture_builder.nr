@@ -322,11 +322,13 @@ impl RollupFixtureBuilder {
         end_slot_number: Field,
     ) -> CheckpointRollupPublicInputs {
         let mut checkpoint_header_hashes = [0; AZTEC_MAX_EPOCH_DURATION];
+        let mut out_hashes = [0; AZTEC_MAX_EPOCH_DURATION];
         let mut fees = [FeeRecipient::empty(); AZTEC_MAX_EPOCH_DURATION];
         let num_checkpoints = (end_slot_number - start_slot_number) as u32 + 1;
         for i in 0..num_checkpoints {
             let slot_number = i as Field + start_slot_number;
             checkpoint_header_hashes[i] = self.get_checkpoint_header_hash(slot_number);
+            out_hashes[i] = self.get_out_hash(slot_number as u32);
             fees[i] = self.get_fee_and_coinbase(slot_number);
         }
 
@@ -337,7 +339,7 @@ impl RollupFixtureBuilder {
             previous_archive: self.get_archive(start_slot_number as u32 - 1),
             new_archive: self.get_archive(end_slot_number as u32),
             checkpoint_header_hashes,
-            out_hash: self.get_out_hash(end_slot_number as u32),
+            out_hashes,
             fees,
             start_blob_accumulator: self.get_blob_accumulator(start_slot_number - 1),
             end_blob_accumulator: self.get_blob_accumulator(end_slot_number),

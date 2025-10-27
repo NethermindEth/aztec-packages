@@ -28,13 +28,13 @@ export class CheckpointRollupPublicInputs {
      */
     public newArchive: AppendOnlyTreeSnapshot,
     /**
-     * Root of the wonky tree consisting of the `out_hash` values from all blocks in this checkpoint.
-     */
-    public outHash: Fr,
-    /**
      * The hashes of the headers of the constituent checkpoints.
      */
     public checkpointHeaderHashes: Tuple<Fr, typeof AZTEC_MAX_EPOCH_DURATION>,
+    /**
+     * The `out_hash` values from all checkpoints in this checkpoint range.
+     */
+    public outHashes: Tuple<Fr, typeof AZTEC_MAX_EPOCH_DURATION>,
     /**
      * The summed transaction fees and recipients of the constituent checkpoints.
      */
@@ -59,7 +59,7 @@ export class CheckpointRollupPublicInputs {
       reader.readObject(EpochConstantData),
       reader.readObject(AppendOnlyTreeSnapshot),
       reader.readObject(AppendOnlyTreeSnapshot),
-      reader.readObject(Fr),
+      reader.readArray(AZTEC_MAX_EPOCH_DURATION, Fr),
       reader.readArray(AZTEC_MAX_EPOCH_DURATION, Fr),
       reader.readArray(AZTEC_MAX_EPOCH_DURATION, FeeRecipient),
       reader.readObject(BlobAccumulator),
@@ -73,8 +73,8 @@ export class CheckpointRollupPublicInputs {
       this.constants,
       this.previousArchive,
       this.newArchive,
-      this.outHash,
       this.checkpointHeaderHashes,
+      this.outHashes,
       this.fees,
       this.startBlobAccumulator,
       this.endBlobAccumulator,

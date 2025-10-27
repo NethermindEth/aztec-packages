@@ -137,10 +137,7 @@ export class UnbalancedMerkleTreeCalculator {
         const shouldShiftUp = !sibling || sibling.value.equals(this.valueToCompress);
         if (shouldShiftUp) {
           // The node becomes the parent if the sibling is a compressed leaf.
-          const isLeaf = this.shiftNodeUp(location, parentLocation);
-          if (!isLeaf) {
-            this.shiftChildrenUp(location, parentLocation);
-          }
+          this.shiftNodeUp(location, parentLocation);
         } else {
           // Hash the value with the (right) sibling and update the parent node.
           const node = this.store.getNode(location)!;
@@ -156,32 +153,35 @@ export class UnbalancedMerkleTreeCalculator {
     }
   }
 
-  private shiftNodeUp(fromLocation: TreeNodeLocation, toLocation: TreeNodeLocation): boolean {
-    const node = this.store.getNode(fromLocation)!;
-
-    this.store.setNode(toLocation, node);
-
-    const isLeaf = node.leafIndex !== undefined;
-    if (isLeaf) {
-      // Update the location if the node is a leaf.
-      this.leafLocations[node.leafIndex!] = toLocation;
+  private shiftNodeUp(from: TreeNodeLocation, to: TreeNodeLocation) {
+    // Collect all nodes that need to shift.
+    const nodesToShift = this.collectNodesToShift(from, to);
+    // Move all nodes to their new locations.
+    for (const { node, newLocation } of nodesToShift) {
+      this.store.setNode(newLocation, node);
+      if (node.leafIndex !== undefined) {
+        this.leafLocations[node.leafIndex] = newLocation;
+      }
     }
-
-    return isLeaf;
   }
 
-  private shiftChildrenUp(parent: TreeNodeLocation, parentNewLocation: TreeNodeLocation) {
-    const [left, right] = this.store.getChildLocations(parent);
-    const [leftNewLocation, rightNewLocation] = this.store.getChildLocations(parentNewLocation);
-
-    const isLeftLeaf = this.shiftNodeUp(left, leftNewLocation);
-    const isRightLeaf = this.shiftNodeUp(right, rightNewLocation);
-
-    if (!isLeftLeaf) {
-      this.shiftChildrenUp(left, leftNewLocation);
+  private collectNodesToShift(from: TreeNodeLocation, to: TreeNodeLocation) {
+    const node = this.store.getNode(from);
+    if (!node) {
+      return [];
     }
-    if (!isRightLeaf) {
-      this.shiftChildrenUp(right, rightNewLocation);
+
+    let result = [{ node, newLocation: to }];
+
+    // If not a leaf, collect its children.
+    if (node.leafIndex === undefined) {
+      const [leftChild, rightChild] = this.store.getChildLocations(from);
+      const [leftChildNew, rightChildNew] = this.store.getChildLocations(to);
+      result = result
+        .concat(this.collectNodesToShift(leftChild, leftChildNew))
+        .concat(this.collectNodesToShift(rightChild, rightChildNew));
     }
+
+    return result;
   }
 }

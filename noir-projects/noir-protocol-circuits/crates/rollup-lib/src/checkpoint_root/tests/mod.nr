@@ -318,7 +318,7 @@ impl TestBuilder {
         } else {
             accumulate_out_hash(left.out_hash, right.out_hash)
         };
-        assert_eq(pi.out_hash, out_hash);
+        assert_array_eq(pi.out_hashes, [out_hash]);
 
         let total_fees = if self.is_single_block {
             left.accumulated_fees

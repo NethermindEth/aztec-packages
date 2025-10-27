@@ -13,7 +13,6 @@ use types::{
         AZTEC_MAX_EPOCH_DURATION, CHECKPOINT_MERGE_ROLLUP_VK_INDEX, CHECKPOINT_ROOT_ROLLUP_VK_INDEX,
         CHECKPOINT_ROOT_SINGLE_BLOCK_ROLLUP_VK_INDEX,
     },
-    hash::accumulate_sha256,
     traits::Empty,
 };
 
@@ -104,32 +103,24 @@ impl TestBuilder {
         assert(pi.previous_archive != pi.new_archive);
 
         let mut expected_header_hashes = [0; AZTEC_MAX_EPOCH_DURATION];
+        let mut expected_out_hashes = [0; AZTEC_MAX_EPOCH_DURATION];
         let mut expected_fees = [FeeRecipient::empty(); AZTEC_MAX_EPOCH_DURATION];
         for i in 0..self.num_left_checkpoints as u32 {
             expected_header_hashes[i] = left.checkpoint_header_hashes[i];
+            expected_out_hashes[i] = left.out_hashes[i];
             expected_fees[i] = left.fees[i];
             assert(left.checkpoint_header_hashes[i] != 0);
-            assert(!left.fees[i].is_empty());
         }
         let offset = self.num_left_checkpoints as u32;
         for i in 0..self.num_right_checkpoints as u32 {
             expected_header_hashes[i + offset] = right.checkpoint_header_hashes[i];
+            expected_out_hashes[i + offset] = right.out_hashes[i];
             expected_fees[i + offset] = right.fees[i];
             assert(right.checkpoint_header_hashes[i] != 0);
-            assert(!right.fees[i].is_empty());
         }
         assert_eq(pi.checkpoint_header_hashes, expected_header_hashes);
+        assert_eq(pi.out_hashes, expected_out_hashes);
         assert_eq(pi.fees, expected_fees);
-
-        let expected_out_hash = if (left.out_hash != 0) & (right.out_hash != 0) {
-            accumulate_sha256(left.out_hash, right.out_hash)
-        } else if left.out_hash != 0 {
-            left.out_hash
-        } else {
-            right.out_hash
-        };
-        assert_eq(pi.out_hash, expected_out_hash);
-        // The tests to cover all the above scenarios are in `consecutive_checkpoint_rollups_tests.nr`.
 
         assert_eq(pi.start_blob_accumulator, left.start_blob_accumulator);
         assert_eq(pi.end_blob_accumulator, right.end_blob_accumulator);

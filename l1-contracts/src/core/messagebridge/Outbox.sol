@@ -16,6 +16,13 @@ import {BitMaps} from "@oz/utils/structs/BitMaps.sol";
  * @author Aztec Labs
  * @notice Lives on L1 and is used to consume L2 -> L1 messages. Messages are inserted by the Rollup
  * and will be consumed by the portal contracts.
+ *
+ * @dev Messages are tracked using unique leaf IDs computed from their position in the epoch's tree structure.
+ * This design ensures that when longer epoch proofs are submitted (proving more blocks), messages from
+ * earlier blocks retain their consumed status because their leaf IDs remain stable.
+ *
+ * For detailed information about the tree structure and leaf ID computation, see:
+ * yarn-project/stdlib/src/messaging/l2_to_l1_membership.ts
  */
 contract Outbox is IOutbox {
   using Hash for DataStructures.L2ToL1Msg;
@@ -23,7 +30,11 @@ contract Outbox is IOutbox {
 
   struct RootData {
     // This is the outHash in the root rollup's public inputs.
+    // It represents the root of the epoch tree containing all L2->L1 messages.
     bytes32 root;
+    // Bitmap tracking which messages (by leaf ID) have been consumed.
+    // Leaf IDs are stable across different epoch proof lengths, ensuring consumed
+    // messages remain marked as consumed when longer proofs are submitted.
     BitMaps.BitMap nullified;
   }
 
@@ -87,6 +98,7 @@ contract Outbox is IOutbox {
 
     require(root != bytes32(0), Errors.Outbox__NothingToConsumeAtEpoch(_epoch));
 
+    // Compute the unique leaf ID for this message.
     uint256 leafId = (1 << _path.length) + _leafIndex;
 
     require(!rootData.nullified.get(leafId), Errors.Outbox__AlreadyNullified(_epoch, leafId));

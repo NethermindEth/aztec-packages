@@ -1,6 +1,90 @@
+import { AZTEC_MAX_EPOCH_DURATION } from '@aztec/constants';
 import { Fr } from '@aztec/foundation/fields';
 import { SiblingPath, UnbalancedMerkleTreeCalculator, computeUnbalancedMerkleTreeRoot } from '@aztec/foundation/trees';
 
+/**
+ * # L2-to-L1 Message Tree Structure and Leaf IDs
+ *
+ * ## Overview
+ * L2-to-L1 messages are organized in a hierarchical 4-level tree structure within each epoch:
+ *   Epoch → Checkpoints → Blocks → Transactions → Messages
+ *
+ * Each level uses an unbalanced Merkle tree, and some levels use compression (skipping zero hashes).
+ *
+ * ## Tree Levels
+ *
+ * 1. **Message Tree (TX Out Hash)**
+ *    - Leaves: Individual L2-to-L1 messages within a transaction
+ *    - Root: TX out hash
+ *    - Type: Unbalanced, non-compressed (the circuits ensure that all messages are not empty.)
+ *
+ * 2. **Block Tree**
+ *    - Leaves: TX out hashes from all transactions in a block
+ *    - Root: Block out hash
+ *    - Type: Unbalanced, compressed (zero hashes are skipped)
+ *    - Compression: If a tx has no messages (out hash = 0), that branch is ignored
+ *
+ * 3. **Checkpoint Tree**
+ *    - Leaves: Block out hashes from all blocks in a checkpoint
+ *    - Root: Checkpoint out hash
+ *    - Type: Unbalanced, compressed (zero hashes are skipped)
+ *    - Compression: If a block has no messages (out hash = 0), that branch is ignored
+ *
+ * 4. **Epoch Tree**
+ *    - Leaves: Checkpoint out hashes from all checkpoints in an epoch (padded to AZTEC_MAX_EPOCH_DURATION)
+ *    - Root: Epoch out hash (set in the root rollup's public inputs and inserted into the Outbox on L1 when the epoch is proven)
+ *    - Type: Unbalanced, non-compressed
+ *    - **Important**: Padded with zeros up to AZTEC_MAX_EPOCH_DURATION to allow for proofs of partial epochs
+ *
+ * ## Combined Membership Proof
+ * To prove a message exists in an epoch, we combine the sibling paths from all 4 trees:
+ *   [message siblings] + [tx siblings] + [block siblings] + [checkpoint siblings]
+ *
+ * ## Leaf ID: Stable Message Identification
+ *
+ * Each message gets a unique, stable **leaf ID** that identifies its position in the combined tree.
+ * The leaf ID is computed as:
+ *   leafId = 2^pathSize + leafIndex
+ *
+ * Where:
+ * - `pathSize`: Total length of the combined sibling path (from all 4 tree levels)
+ * - `leafIndex`: The message's index in a balanced tree representation at that height
+ *
+ * ### Why Leaf IDs Are Stable
+ *
+ * The leaf ID is based on the message's position in the tree structure, which is determined by:
+ * - The checkpoint index within the epoch
+ * - The block index within the checkpoint
+ * - The transaction index within the block
+ * - The message index within the transaction
+ *
+ * These indices are structural and do NOT depend on the total number of blocks/checkpoints in the epoch.
+ *
+ * ### Critical Property: Preserving Consumed Status
+ *
+ * **Problem**: On L1, epoch proofs can be submitted incrementally. For example:
+ * - First, a proof for checkpoints 1-10 of epoch 0 is submitted (proves the first 10 checkpoints)
+ * - Later, a proof for checkpoints 1-20 of epoch 0 is submitted (proves all 20 checkpoints)
+ *
+ * When the longer proof is submitted, it updates the epoch's out hash root on L1 to reflect the complete epoch (all 20
+ * checkpoints). However, some messages from checkpoints 1-10 may have already been consumed.
+ *
+ * **Solution**: The Outbox on L1 tracks consumed messages using a bitmap indexed by leaf ID.
+ * Because leaf IDs are stable (they don't change when more checkpoints are added to the epoch), messages that were consumed
+ * under the shorter proof remain marked as consumed under the longer proof.
+ *
+ * This prevents double-spending of L2-to-L1 messages when longer epoch proofs are submitted.
+ */
+
+/**
+ * Computes the unique leaf ID for an L2-to-L1 message.
+ *
+ * The leaf ID is stable across different epoch proof lengths and is used by the Outbox
+ * on L1 to track which messages have been consumed.
+ *
+ * @param membershipWitness - Contains the leafIndex and siblingPath for the message
+ * @returns The unique leaf ID used for tracking message consumption on L1
+ */
 export function getL2ToL1MessageLeafId(
   membershipWitness: Pick<L2ToL1MembershipWitness, 'leafIndex' | 'siblingPath'>,
 ): bigint {
@@ -72,19 +156,23 @@ export function computeL2ToL1MembershipWitnessFromMessagesInEpoch(
   const pathToBlockOutHashInCheckpointTree = checkpointTree.getSiblingPathByLeafIndex(blockIndex);
 
   // Compute the out hashes of all checkpoints in the epoch.
-  const checkpointOutHashes = messagesInEpoch.map((messagesInCheckpoint, i) => {
+  let checkpointOutHashes = messagesInEpoch.map((messagesInCheckpoint, i) => {
     if (i === checkpointIndex) {
       return checkpointTree.getRoot();
     }
     return buildCheckpointTree(messagesInCheckpoint).getRoot();
   });
-  // Build the epoch tree with all the checkpoint out hashes.
-  const epochTree = buildCompressedTree(checkpointOutHashes);
-  // Get the sibling path of the block out hash in the epoch tree.
+  // Pad to AZTEC_MAX_EPOCH_DURATION with zeros.
+  checkpointOutHashes = checkpointOutHashes.concat(
+    Array.from({ length: AZTEC_MAX_EPOCH_DURATION - messagesInEpoch.length }, () => Buffer.alloc(32)),
+  );
+
+  // Build the epoch tree with all the checkpoint out hashes, including the padded zeros
+  const epochTree = UnbalancedMerkleTreeCalculator.create(checkpointOutHashes);
+  // Get the sibling path of the checkpoint out hash in the epoch tree.
   const pathToCheckpointOutHashInEpochTree = epochTree.getSiblingPathByLeafIndex(checkpointIndex);
 
   // The root of the epoch tree should match the `out_hash` in the root rollup's public inputs.
-  // Zero hashes are compressed to reduce cost if the non-zero leaves result in a shorter path.
   const root = Fr.fromBuffer(epochTree.getRoot());
 
   // Compute the combined sibling path by appending the tx subtree path to the block tree path, then to the checkpoint
