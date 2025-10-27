@@ -138,7 +138,7 @@ container_script=$(
   export PARENT_LOG_URL=${PARENT_LOG_URL:-http://ci.aztec-labs.com/\$ci_log_id}
 
   if [ -n "${DOCKERHUB_PASSWORD:-}" ]; then
-    echo $DOCKERHUB_PASSWORD | docker login -u aztecprotocolci --password-stdin
+    echo ${DOCKERHUB_PASSWORD:-} | docker login -u aztecprotocolci --password-stdin
   fi
 
   # Heartbeat.
