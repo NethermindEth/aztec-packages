@@ -12,6 +12,7 @@ terraform.tfstate*
 .tsbuildinfo
 bench-out
 dumped-avm-circuit-inputs
+wasi-sdk-*/
 
 # Local Netlify folder
 .netlify
