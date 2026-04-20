@@ -35,11 +35,13 @@ import {
   createArtifactOption,
   createAuthwitnessOption,
   createContractAddressOption,
+  createDebugBundleOnErrorOption,
   createDebugExecutionStepsDirOption,
   createTypeOption,
   createVerboseOption,
   integerArgParser,
 } from '../utils/options/index.js';
+import { injectDebugCommands } from './debug/index.js';
 
 function parseWaitForStatus(status: string): TxStatus {
   switch (status) {
@@ -325,6 +327,11 @@ export function injectCommands(
     }
   });
 
+  const debugCommand = program
+    .command('debug')
+    .description('Debugger trace, redaction preview, and bundle export utilities.');
+  injectDebugCommands(debugCommand, log, walletAndNodeWrapper, db);
+
   const sendCommand = program
     .command('send')
     .description('Calls a function on an Aztec contract.')
@@ -345,10 +352,12 @@ export function injectCommands(
     .addOption(createAccountOption('Alias or address of the account to send the transaction from', !db, db))
     .option('--no-wait', 'Print transaction hash without waiting for it to be mined')
     .option('--wait-for-status <status>', "Tx status to wait for: 'proposed' or 'checkpointed'", 'proposed')
-    .addOption(createVerboseOption());
+    .addOption(createVerboseOption())
+    .addOption(createDebugBundleOnErrorOption());
 
   addOptions(sendCommand, CLIFeeArgs.getOptions()).action(async (functionName, _options, command) => {
     const { send } = await import('./send.js');
+    const { withErrorBundle } = await import('./debug/on_error.js');
     const options = command.optsWithGlobals();
     const {
       args,
@@ -368,21 +377,26 @@ export function injectCommands(
     debugLogger.info(`Using wallet with address ${parsedFromAddress.toString()}`);
 
     const authWitnesses = cleanupAuthWitnesses(authWitnessArray);
-    const sentTx = await send(
-      wallet,
-      node,
-      parsedFromAddress,
-      functionName,
-      args,
-      artifactPath,
-      contractAddress,
-      wait,
-      alias,
-      CLIFeeArgs.parse(options, log, db),
-      authWitnesses,
-      parseWaitForStatus(waitForStatusStr),
-      verbose,
-      log,
+    const sentTx = await withErrorBundle(
+      { debug: wallet.debug, recorder: walletAndNodeWrapper.traceRecorder },
+      { outDir: options.debugBundleOnError, log },
+      () =>
+        send(
+          wallet,
+          node,
+          parsedFromAddress,
+          functionName,
+          args,
+          artifactPath,
+          contractAddress,
+          wait,
+          alias,
+          CLIFeeArgs.parse(options, log, db),
+          authWitnesses,
+          parseWaitForStatus(waitForStatusStr),
+          verbose,
+          log,
+        ),
     );
     if (db && sentTx) {
       const txAlias = alias ? alias : `${functionName}-${randomBytes(16).toString('hex')}`;
@@ -402,10 +416,12 @@ export function injectCommands(
     )
     .addOption(createAuthwitnessOption('Authorization witness to use for the simulation', !db, db))
     .addOption(createAccountOption('Alias or address of the account to simulate from', !db, db))
-    .addOption(createVerboseOption());
+    .addOption(createVerboseOption())
+    .addOption(createDebugBundleOnErrorOption());
 
   addOptions(simulateCommand, CLIFeeArgs.getOptions()).action(async (functionName, _options, command) => {
     const { simulate } = await import('./simulate.js');
+    const { withErrorBundle } = await import('./debug/on_error.js');
     const options = command.optsWithGlobals();
     const {
       args,
@@ -420,18 +436,23 @@ export function injectCommands(
 
     const artifactPath = await artifactPathFromPromiseOrAlias(artifactPathPromise, contractAddress, db);
     const authWitnesses = cleanupAuthWitnesses(authWitness);
-    await simulate(
-      wallet,
-      node,
-      parsedFromAddress,
-      functionName,
-      args,
-      artifactPath,
-      contractAddress,
-      CLIFeeArgs.parse(options, log, db),
-      authWitnesses,
-      verbose,
-      log,
+    await withErrorBundle(
+      { debug: wallet.debug, recorder: walletAndNodeWrapper.traceRecorder },
+      { outDir: options.debugBundleOnError, log },
+      () =>
+        simulate(
+          wallet,
+          node,
+          parsedFromAddress,
+          functionName,
+          args,
+          artifactPath,
+          contractAddress,
+          CLIFeeArgs.parse(options, log, db),
+          authWitnesses,
+          verbose,
+          log,
+        ),
     );
   });
 
@@ -444,10 +465,12 @@ export function injectCommands(
     .addOption(createArtifactOption(db))
     .addOption(createDebugExecutionStepsDirOption())
     .addOption(createAuthwitnessOption('Authorization witness to use for the simulation', !db, db))
-    .addOption(createAccountOption('Alias or address of the account to simulate from', !db, db));
+    .addOption(createAccountOption('Alias or address of the account to simulate from', !db, db))
+    .addOption(createDebugBundleOnErrorOption());
 
   addOptions(profileCommand, CLIFeeArgs.getOptions()).action(async (functionName, _options, command) => {
     const { profile } = await import('./profile.js');
+    const { withErrorBundle } = await import('./debug/on_error.js');
     const options = command.optsWithGlobals();
     const {
       args,
@@ -462,18 +485,23 @@ export function injectCommands(
 
     const artifactPath = await artifactPathFromPromiseOrAlias(artifactPathPromise, contractAddress, db);
     const authWitnesses = cleanupAuthWitnesses(authWitness);
-    await profile(
-      wallet,
-      node,
-      parsedFromAddress,
-      functionName,
-      args,
-      artifactPath,
-      contractAddress,
-      debugExecutionStepsDir,
-      CLIFeeArgs.parse(options, log, db),
-      authWitnesses,
-      log,
+    await withErrorBundle(
+      { debug: wallet.debug, recorder: walletAndNodeWrapper.traceRecorder },
+      { outDir: options.debugBundleOnError, log },
+      () =>
+        profile(
+          wallet,
+          node,
+          parsedFromAddress,
+          functionName,
+          args,
+          artifactPath,
+          contractAddress,
+          debugExecutionStepsDir,
+          CLIFeeArgs.parse(options, log, db),
+          authWitnesses,
+          log,
+        ),
     );
   });
 
