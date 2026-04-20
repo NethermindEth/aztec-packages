@@ -29,6 +29,7 @@
     "cli-wallet",
     "cli",
     "constants",
+    "debugger",
     "docs",
     "end-to-end",
     "entrypoints",

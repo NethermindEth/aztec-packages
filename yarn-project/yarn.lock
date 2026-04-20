@@ -1176,6 +1176,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@aztec/debugger@workspace:debugger":
+  version: 0.0.0-use.local
+  resolution: "@aztec/debugger@workspace:debugger"
+  dependencies:
+    "@aztec/foundation": "workspace:^"
+    "@aztec/kv-store": "workspace:^"
+    "@aztec/stdlib": "workspace:^"
+    "@jest/globals": "npm:^30.0.0"
+    "@types/jest": "npm:^30.0.0"
+    "@types/node": "npm:^22.15.17"
+    "@typescript/native-preview": "npm:7.0.0-dev.20260113.1"
+    jest: "npm:^30.0.0"
+    ts-node: "npm:^10.9.1"
+    tslib: "npm:^2.4.0"
+    typescript: "npm:^5.3.3"
+    zod: "npm:^3.23.8"
+  languageName: unknown
+  linkType: soft
+
 "@aztec/docs@workspace:docs":
   version: 0.0.0-use.local
   resolution: "@aztec/docs@workspace:docs"

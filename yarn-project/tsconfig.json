@@ -32,6 +32,7 @@
     { "path": "bb-prover/tsconfig.json" },
     { "path": "bot/tsconfig.json" },
     { "path": "constants/tsconfig.json" },
+    { "path": "debugger/tsconfig.json" },
     { "path": "blob-lib/tsconfig.json" },
     { "path": "pxe/tsconfig.json" },
     { "path": "aztec/tsconfig.json" },
