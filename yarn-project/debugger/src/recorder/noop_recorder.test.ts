@@ -42,6 +42,13 @@ describe('NoopTraceRecorder', () => {
     await expect(r.getTrace('anything')).resolves.toBeUndefined();
   });
 
+  it('lastStartedTraceId resolves to undefined regardless of prior calls', async () => {
+    const r = makeRecorder();
+    await expect(r.lastStartedTraceId()).resolves.toBeUndefined();
+    await r.startTrace({ network: { chainId: 1 } });
+    await expect(r.lastStartedTraceId()).resolves.toBeUndefined();
+  });
+
   it('no state survives across calls', async () => {
     const r = makeRecorder();
     const a = await r.startTrace({ traceId: 'a', network: { chainId: 1 } });

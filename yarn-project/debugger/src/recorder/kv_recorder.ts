@@ -328,6 +328,16 @@ export class KvTraceRecorder implements TraceRecorder {
     });
   }
 
+  lastStartedTraceId(): Promise<string | undefined> {
+    return this.store.transactionAsync(async () => {
+      const cursor = await this.cursor.getAsync();
+      if (!cursor || cursor.nextSequence <= cursor.firstLiveSequence) {
+        return undefined;
+      }
+      return this.order.getAsync(cursor.nextSequence - 1);
+    });
+  }
+
   async getTrace(idOrTxHashOrProvisionalId: string): Promise<AztecTrace | undefined> {
     const direct = await this.traces.getAsync(idOrTxHashOrProvisionalId);
     if (direct) {

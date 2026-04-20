@@ -80,6 +80,9 @@ export interface TraceRecorder {
   /** Looks up a trace by trace id, tx hash, or provisional id (in that order). */
   getTrace(idOrTxHashOrProvisionalId: string): Promise<AztecTrace | undefined>;
 
+  /** Returns the trace id most recently passed to {@link startTrace}, or undefined if none. */
+  lastStartedTraceId(): Promise<string | undefined>;
+
   /** Removes all debugger-owned state without affecting other data in the backing store. */
   clear(): Promise<void>;
 }

@@ -47,6 +47,10 @@ export class NoopTraceRecorder implements TraceRecorder {
     return Promise.resolve(undefined);
   }
 
+  lastStartedTraceId(): Promise<undefined> {
+    return Promise.resolve(undefined);
+  }
+
   clear(): Promise<void> {
     return Promise.resolve();
   }

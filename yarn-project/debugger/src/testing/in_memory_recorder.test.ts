@@ -206,6 +206,17 @@ describe('InMemoryTraceRecorder', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('lastStartedTraceId returns undefined when the recorder is empty', async () => {
+    await expect(recorder.lastStartedTraceId()).resolves.toBeUndefined();
+  });
+
+  it('lastStartedTraceId returns the trace id most recently started', async () => {
+    const h1 = await recorder.startTrace({ traceId: 't1', network: { chainId: 1 } });
+    expect(await recorder.lastStartedTraceId()).toBe(h1.traceId);
+    const h2 = await recorder.startTrace({ traceId: 't2', network: { chainId: 1 } });
+    expect(await recorder.lastStartedTraceId()).toBe(h2.traceId);
+  });
+
   it('stored traces survive JSON round-trip through AztecTraceSchema', async () => {
     const handle = await recorder.startTrace({ network: { chainId: 1 } });
     await recorder.startSpan(handle, {

@@ -203,6 +203,13 @@ export class InMemoryTraceRecorder implements TraceRecorder {
     return Promise.resolve();
   }
 
+  lastStartedTraceId(): Promise<string | undefined> {
+    if (this.order.length === 0) {
+      return Promise.resolve(undefined);
+    }
+    return Promise.resolve(this.order[this.order.length - 1]);
+  }
+
   getTrace(idOrTxHashOrProvisionalId: string): Promise<AztecTrace | undefined> {
     const direct = this.traces.get(idOrTxHashOrProvisionalId);
     if (direct) {
