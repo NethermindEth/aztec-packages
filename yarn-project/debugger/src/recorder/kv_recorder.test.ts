@@ -158,6 +158,23 @@ describe('KvTraceRecorder', () => {
     expect(stored?.errors.length).toBe(2);
   });
 
+  it('recordError flips trace status to error and appends the error', async () => {
+    const trace = await recorder.startTrace({ network: { chainId: 1 } });
+    expect((await recorder.getTrace(trace.traceId))?.status).toBe('ok');
+    await recorder.recordError(trace, {
+      schemaVersion: 'aztec.error.v1',
+      errorId: 'e1',
+      code: 'AZDBG_UNKNOWN',
+      message: 'boom',
+      category: 'unknown',
+      severity: 'error',
+      retryable: false,
+    });
+    const stored = await recorder.getTrace(trace.traceId);
+    expect(stored?.status).toBe('error');
+    expect(stored?.errors.length).toBe(1);
+  });
+
   it('caps events supplied when a span starts', async () => {
     const trace = await recorder.startTrace({ network: { chainId: 1 } });
     await recorder.startSpan(trace, {

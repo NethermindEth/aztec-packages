@@ -254,7 +254,9 @@ export class KvTraceRecorder implements TraceRecorder {
       if (!stored) {
         return;
       }
+      stored.status = 'error';
       if (stored.errors.length >= this.retention.maxErrorsPerTrace) {
+        await this.traces.set(trace.traceId, stored);
         return;
       }
       stored.errors.push(error);

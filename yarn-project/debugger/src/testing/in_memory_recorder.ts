@@ -9,6 +9,7 @@ import {
   type RedactionManifest,
 } from '@aztec/stdlib/debug';
 
+import type { TraceRetentionConfig } from '../recorder/kv_recorder.js';
 import type {
   EndSpanInput,
   SpanHandle,
@@ -17,7 +18,6 @@ import type {
   TraceHandle,
   TraceRecorder,
 } from '../recorder/trace_recorder.js';
-import type { TraceRetentionConfig } from '../recorder/kv_recorder.js';
 
 function randomHex(len: number): string {
   return randomBytes(len).toString('hex');
@@ -170,8 +170,11 @@ export class InMemoryTraceRecorder implements TraceRecorder {
 
   recordError(trace: TraceHandle, error: AztecTraceError): Promise<void> {
     const stored = this.traces.get(trace.traceId);
-    if (stored && stored.errors.length < this.retention.maxErrorsPerTrace) {
-      stored.errors.push(error);
+    if (stored) {
+      stored.status = 'error';
+      if (stored.errors.length < this.retention.maxErrorsPerTrace) {
+        stored.errors.push(error);
+      }
     }
     return Promise.resolve();
   }

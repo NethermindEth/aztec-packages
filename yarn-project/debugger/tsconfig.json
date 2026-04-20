@@ -7,8 +7,14 @@
   },
   "include": ["src"],
   "references": [
-    { "path": "../foundation" },
-    { "path": "../stdlib" },
-    { "path": "../kv-store" }
+    {
+      "path": "../foundation"
+    },
+    {
+      "path": "../kv-store"
+    },
+    {
+      "path": "../stdlib"
+    }
   ]
 }
