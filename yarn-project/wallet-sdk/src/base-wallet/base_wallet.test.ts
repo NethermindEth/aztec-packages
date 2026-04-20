@@ -1,6 +1,7 @@
 import type { Account } from '@aztec/aztec.js/account';
 import type { AztecNode } from '@aztec/aztec.js/node';
 import type { Aliased } from '@aztec/aztec.js/wallet';
+import { InMemoryTraceRecorder, NoopTraceRecorder, type TraceRecorder } from '@aztec/debugger';
 import { BlockNumber } from '@aztec/foundation/branded-types';
 import { Fr } from '@aztec/foundation/curves/bn254';
 import { TokenContract, type Transfer } from '@aztec/noir-contracts.js/Token';
@@ -24,8 +25,10 @@ import {
   TxHash,
   TxProvingResult,
   TxSimulationResult,
+  type UtilityExecutionResult,
 } from '@aztec/stdlib/tx';
 
+import { jest } from '@jest/globals';
 import { type MockProxy, mock } from 'jest-mock-extended';
 
 import { BaseWallet } from './base_wallet.js';
@@ -62,6 +65,18 @@ async function makeFunctionCall(type: FunctionType, isStatic: boolean, name: str
     returnTypes: [{ kind: 'field' as const }],
   });
 }
+
+function stubDebug(pxe: MockProxy<PXE>, recorder: TraceRecorder): void {
+  Object.defineProperty(pxe, 'debug', {
+    configurable: true,
+    value: {
+      recorder,
+      getTrace: (id: string) => recorder.getTrace(id),
+    },
+  });
+}
+
+const retention = { maxTraces: 4, maxSpansPerTrace: 16, maxEventsPerSpan: 4, maxErrorsPerTrace: 4 };
 
 describe('BaseWallet', () => {
   let pxe: MockProxy<PXE>;
@@ -240,6 +255,170 @@ describe('BaseWallet', () => {
 
       expect(result.feePerL2Gas).toBe(500n);
       expect(node.getCurrentMinFees).toHaveBeenCalled();
+    });
+  });
+
+  describe('trace recorder integration', () => {
+    it('binds the final tx hash to the trace after provenTx.toTx()', async () => {
+      pxe = mock<PXE>();
+      node = mock<AztecNode>();
+      const recorder = new InMemoryTraceRecorder(retention);
+      stubDebug(pxe, recorder);
+
+      const wallet = new BasicWallet(pxe, node);
+      const from = await AztecAddress.random();
+
+      const provenTx = mock<TxProvingResult>();
+      provenTx.getOffchainEffects.mockReturnValue([]);
+      Object.defineProperty(provenTx, 'publicInputs', {
+        value: { constants: { anchorBlockHeader: { globalVariables: { timestamp: 0n } } } },
+      });
+      const finalTxHash = TxHash.random();
+      const finalTxHashStr = finalTxHash.toString();
+      const mockTx = mock<Tx>();
+      mockTx.getTxHash.mockReturnValue(finalTxHash);
+      provenTx.toTx.mockResolvedValue(mockTx);
+
+      // Capture the order in which recorder.bindTxHash, node.getTxEffect, and node.sendTx are called.
+      const bindSpy = jest.spyOn(recorder, 'bindTxHash');
+      const callOrder: string[] = [];
+      bindSpy.mockImplementation(async (...args) => {
+        callOrder.push('bindTxHash');
+        return InMemoryTraceRecorder.prototype.bindTxHash.call(recorder, ...args);
+      });
+      node.getTxEffect.mockImplementation(() => {
+        callOrder.push('getTxEffect');
+        return Promise.resolve(undefined);
+      });
+      node.sendTx.mockImplementation(() => {
+        callOrder.push('sendTx');
+        return Promise.resolve();
+      });
+
+      node.getPredictedMinFees.mockResolvedValue([new GasFees(2, 2)]);
+      node.getCurrentMinFees.mockResolvedValue(new GasFees(2, 2));
+      node.getNodeInfo.mockResolvedValue({ ...mock<NodeInfo>(), l1ChainId: 1, rollupVersion: 1 });
+      wallet.mockAccount.createTxExecutionRequest.mockResolvedValue(mock());
+      pxe.proveTx.mockResolvedValue(provenTx);
+
+      const payload = new ExecutionPayload([await makeFunctionCall(FunctionType.PRIVATE, false, 'transfer')], [], []);
+
+      await wallet.sendTx(payload, { from, wait: 'NO_WAIT' });
+
+      expect(callOrder).toEqual(['bindTxHash', 'getTxEffect', 'sendTx']);
+
+      // The recorder now carries a trace anchored at that tx hash.
+      const byTxHash = await recorder.getTrace(finalTxHashStr);
+      expect(byTxHash?.txHash).toBe(finalTxHashStr);
+    });
+
+    it('forwards a TraceHandle to pxe.proveTx on sendTx', async () => {
+      pxe = mock<PXE>();
+      node = mock<AztecNode>();
+      const recorder = new InMemoryTraceRecorder(retention);
+      stubDebug(pxe, recorder);
+
+      const wallet = new BasicWallet(pxe, node);
+      const from = await AztecAddress.random();
+
+      const provenTx = mock<TxProvingResult>();
+      provenTx.getOffchainEffects.mockReturnValue([]);
+      Object.defineProperty(provenTx, 'publicInputs', {
+        value: { constants: { anchorBlockHeader: { globalVariables: { timestamp: 0n } } } },
+      });
+      const mockTx = mock<Tx>();
+      mockTx.getTxHash.mockReturnValue(TxHash.random());
+      provenTx.toTx.mockResolvedValue(mockTx);
+
+      node.getPredictedMinFees.mockResolvedValue([new GasFees(2, 2)]);
+      node.getCurrentMinFees.mockResolvedValue(new GasFees(2, 2));
+      node.getNodeInfo.mockResolvedValue({ ...mock<NodeInfo>(), l1ChainId: 1, rollupVersion: 1 });
+      wallet.mockAccount.createTxExecutionRequest.mockResolvedValue(mock());
+      pxe.proveTx.mockResolvedValue(provenTx);
+      node.getTxEffect.mockResolvedValue(undefined);
+      node.sendTx.mockResolvedValue();
+
+      const payload = new ExecutionPayload([await makeFunctionCall(FunctionType.PRIVATE, false, 'transfer')], [], []);
+
+      await wallet.sendTx(payload, { from, wait: 'NO_WAIT' });
+
+      const [, , proveOpts] = pxe.proveTx.mock.calls[0];
+      expect(proveOpts).toBeDefined();
+      expect(proveOpts?.traceHandle).toBeDefined();
+      expect(typeof proveOpts!.traceHandle!.provisionalTraceId).toBe('string');
+    });
+
+    it('forwards a TraceHandle to pxe.executeUtility', async () => {
+      pxe = mock<PXE>();
+      node = mock<AztecNode>();
+      const recorder = new InMemoryTraceRecorder(retention);
+      stubDebug(pxe, recorder);
+
+      const wallet = new BasicWallet(pxe, node);
+
+      node.getNodeInfo.mockResolvedValue({ ...mock<NodeInfo>(), l1ChainId: 1, rollupVersion: 1 });
+      pxe.executeUtility.mockResolvedValue(mock<UtilityExecutionResult>());
+
+      const call = await makeFunctionCall(FunctionType.UTILITY, false, 'query');
+      await wallet.executeUtility(call, { authWitnesses: [], scopes: [] });
+
+      const [, utilityOpts] = pxe.executeUtility.mock.calls[0];
+      expect(utilityOpts?.traceHandle).toBeDefined();
+    });
+
+    it('does not fetch chain info for utility calls when the recorder is the default no-op', async () => {
+      pxe = mock<PXE>();
+      node = mock<AztecNode>();
+      stubDebug(pxe, new NoopTraceRecorder());
+
+      const wallet = new BasicWallet(pxe, node);
+
+      pxe.executeUtility.mockResolvedValue(mock<UtilityExecutionResult>());
+
+      const call = await makeFunctionCall(FunctionType.UTILITY, false, 'query');
+      await wallet.executeUtility(call, { authWitnesses: [], scopes: [] });
+
+      expect(node.getNodeInfo).not.toHaveBeenCalled();
+      const [, utilityOpts] = pxe.executeUtility.mock.calls[0];
+      expect(utilityOpts?.traceHandle).toBeUndefined();
+    });
+
+    it('does not throw when the recorder rejects', async () => {
+      pxe = mock<PXE>();
+      node = mock<AztecNode>();
+      class ThrowingRecorder extends InMemoryTraceRecorder {
+        constructor() {
+          super(retention);
+        }
+
+        override startTrace(): never {
+          throw new Error('boom');
+        }
+      }
+      stubDebug(pxe, new ThrowingRecorder());
+
+      const wallet = new BasicWallet(pxe, node);
+
+      const provenTx = mock<TxProvingResult>();
+      provenTx.getOffchainEffects.mockReturnValue([]);
+      Object.defineProperty(provenTx, 'publicInputs', {
+        value: { constants: { anchorBlockHeader: { globalVariables: { timestamp: 0n } } } },
+      });
+      const mockTx = mock<Tx>();
+      mockTx.getTxHash.mockReturnValue(TxHash.random());
+      provenTx.toTx.mockResolvedValue(mockTx);
+
+      node.getPredictedMinFees.mockResolvedValue([new GasFees(2, 2)]);
+      node.getCurrentMinFees.mockResolvedValue(new GasFees(2, 2));
+      node.getNodeInfo.mockResolvedValue({ ...mock<NodeInfo>(), l1ChainId: 1, rollupVersion: 1 });
+      wallet.mockAccount.createTxExecutionRequest.mockResolvedValue(mock());
+      pxe.proveTx.mockResolvedValue(provenTx);
+      node.getTxEffect.mockResolvedValue(undefined);
+      node.sendTx.mockResolvedValue();
+
+      const from = await AztecAddress.random();
+      const payload = new ExecutionPayload([await makeFunctionCall(FunctionType.PRIVATE, false, 'transfer')], [], []);
+      await expect(wallet.sendTx(payload, { from, wait: 'NO_WAIT' })).resolves.toBeDefined();
     });
   });
 

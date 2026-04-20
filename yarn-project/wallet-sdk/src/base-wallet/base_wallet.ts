@@ -25,6 +25,12 @@ import {
   type Wallet,
   type WalletCapabilities,
 } from '@aztec/aztec.js/wallet';
+import {
+  NoopTraceRecorder,
+  type TraceHandle,
+  type TraceRecorder,
+  safeRecorderCall,
+} from '@aztec/debugger';
 import { AccountFeePaymentMethodOptions, type DefaultAccountEntrypointOptions } from '@aztec/entrypoints/account';
 import { DefaultEntrypoint } from '@aztec/entrypoints/default';
 import type { ChainInfo } from '@aztec/entrypoints/interfaces';
@@ -37,6 +43,7 @@ import {
   type ContractArtifact,
   type EventMetadataDefinition,
   type FunctionCall,
+  type FunctionSelector,
   decodeFromAbi,
 } from '@aztec/stdlib/abi';
 import type { AuthWitness } from '@aztec/stdlib/auth-witness';
@@ -47,6 +54,7 @@ import {
   computePartialAddress,
   getContractClassFromArtifact,
 } from '@aztec/stdlib/contract';
+import type { AztecTraceNetwork } from '@aztec/stdlib/debug';
 import { SimulationError } from '@aztec/stdlib/errors';
 import { Gas, GasFees, GasSettings, ManaUsageEstimate } from '@aztec/stdlib/gas';
 import {
@@ -89,6 +97,8 @@ export type SimulateViaEntrypointOptions = Pick<
 > & {
   /** Fee options for the entrypoint */
   feeOptions: FeeOptions;
+  /** Optional debugger trace handle to pass through to PXE. */
+  traceHandle?: TraceHandle;
 };
 
 /** Options for `completeFeeOptions`. */
@@ -153,6 +163,50 @@ export abstract class BaseWallet implements Wallet {
     }
     const { l1ChainId, rollupVersion } = await this.nodeInfoPromise;
     return { chainId: new Fr(l1ChainId), version: new Fr(rollupVersion) };
+  }
+
+  /**
+   * Creates a root debugger trace at the wallet boundary before a tx hash exists. Returns
+   * undefined when the recorder is absent or fails.
+   */
+  private async startRootTrace(params: {
+    from?: AztecAddress;
+    target?: AztecAddress;
+    functionSelector?: FunctionSelector;
+    operation: 'simulateTx' | 'profileTx' | 'sendTx' | 'executeUtility';
+  }): Promise<TraceHandle | undefined> {
+    const recorder = await safeRecorderCall<TraceRecorder | undefined>(
+      'getRecorder',
+      async () => this.pxe.debug.recorder,
+      undefined,
+    );
+    if (!recorder || recorder instanceof NoopTraceRecorder) {
+      return undefined;
+    }
+    const chainInfo = await this.getChainInfo();
+    const network: AztecTraceNetwork = {
+      chainId: Number(chainInfo.chainId.toBigInt()),
+      rollupVersion: Number(chainInfo.version.toBigInt()),
+    };
+    const attributes: Record<string, string> = { 'aztec.wallet.operation': params.operation };
+    if (params.from) {
+      attributes['aztec.wallet.from_address'] = params.from.toString();
+    }
+    if (params.target) {
+      attributes['aztec.wallet.target_address'] = params.target.toString();
+    }
+    if (params.functionSelector) {
+      attributes['aztec.wallet.function_selector'] = params.functionSelector.toString();
+    }
+    return safeRecorderCall<TraceHandle | undefined>(
+      'startTrace',
+      () =>
+        recorder.startTrace({
+          network,
+          anchors: { attributes },
+        }),
+      undefined,
+    );
   }
 
   protected async createTxExecutionRequestFromPayloadAndFee(
@@ -353,6 +407,7 @@ export abstract class BaseWallet implements Wallet {
       skipTxValidation: opts.skipTxValidation,
       skipFeeEnforcement: opts.skipFeeEnforcement,
       scopes: this.scopesFrom(opts.from, opts.additionalScopes),
+      traceHandle: opts.traceHandle,
     });
     const appCallOffset = await this.computeAppCallOffset(opts.from, opts.feeOptions);
     return TxSimulationResultWithAppOffset.fromResultAndOffset(result, appCallOffset);
@@ -391,6 +446,10 @@ export abstract class BaseWallet implements Wallet {
       forEstimation: true,
       congestionEstimate: opts.fee?.congestionEstimate,
     });
+    const traceHandle = await this.startRootTrace({
+      operation: 'simulateTx',
+      from: opts.from !== NO_FROM ? opts.from : undefined,
+    });
     const { optimizableCalls, remainingCalls } = extractOptimizablePublicStaticCalls(executionPayload);
     const remainingPayload = { ...executionPayload, calls: remainingCalls };
 
@@ -425,6 +484,7 @@ export abstract class BaseWallet implements Wallet {
             additionalScopes: opts.additionalScopes,
             skipTxValidation: opts.skipTxValidation,
             skipFeeEnforcement: opts.skipFeeEnforcement ?? true,
+            traceHandle,
           })
         : Promise.resolve(null),
     ]);
@@ -439,11 +499,16 @@ export abstract class BaseWallet implements Wallet {
       gasSettings: opts.fee?.gasSettings,
       congestionEstimate: opts.fee?.congestionEstimate,
     });
+    const traceHandle = await this.startRootTrace({
+      operation: 'profileTx',
+      from: opts.from !== NO_FROM ? opts.from : undefined,
+    });
     const txRequest = await this.createTxExecutionRequestFromPayloadAndFee(executionPayload, opts.from, feeOptions);
     return this.pxe.profileTx(txRequest, {
       profileMode: opts.profileMode,
       skipProofGeneration: opts.skipProofGeneration ?? true,
       scopes: this.scopesFrom(opts.from, opts.additionalScopes),
+      traceHandle,
     });
   }
 
@@ -457,14 +522,27 @@ export abstract class BaseWallet implements Wallet {
       gasSettings: opts.fee?.gasSettings,
       congestionEstimate: opts.fee?.congestionEstimate,
     });
+    const traceHandle = await this.startRootTrace({
+      operation: 'sendTx',
+      from: opts.from !== NO_FROM ? opts.from : undefined,
+    });
     const txRequest = await this.createTxExecutionRequestFromPayloadAndFee(executionPayload, opts.from, feeOptions);
-    const provenTx = await this.pxe.proveTx(txRequest, this.scopesFrom(opts.from, opts.additionalScopes));
+    const provenTx = await this.pxe.proveTx(txRequest, this.scopesFrom(opts.from, opts.additionalScopes), {
+      traceHandle,
+    });
     const offchainOutput = extractOffchainOutput(
       provenTx.getOffchainEffects(),
       provenTx.publicInputs.constants.anchorBlockHeader.globalVariables.timestamp,
     );
     const tx = await provenTx.toTx();
     const txHash = tx.getTxHash();
+    if (traceHandle) {
+      await safeRecorderCall(
+        'bindTxHash',
+        () => this.pxe.debug.recorder.bindTxHash(traceHandle.provisionalTraceId, txHash.toString()),
+        undefined,
+      );
+    }
     if (await this.aztecNode.getTxEffect(txHash)) {
       throw new Error(`A settled tx with equal hash ${txHash.toString()} exists.`);
     }
@@ -518,8 +596,13 @@ export abstract class BaseWallet implements Wallet {
     return err;
   }
 
-  executeUtility(call: FunctionCall, opts: ExecuteUtilityOptions): Promise<UtilityExecutionResult> {
-    return this.pxe.executeUtility(call, { authwits: opts.authWitnesses, scopes: opts.scopes });
+  async executeUtility(call: FunctionCall, opts: ExecuteUtilityOptions): Promise<UtilityExecutionResult> {
+    const traceHandle = await this.startRootTrace({
+      operation: 'executeUtility',
+      target: call.to,
+      functionSelector: call.selector,
+    });
+    return this.pxe.executeUtility(call, { authwits: opts.authWitnesses, scopes: opts.scopes, traceHandle });
   }
 
   async getPrivateEvents<T>(
