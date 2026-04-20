@@ -1,3 +1,4 @@
+import type { TraceRecorder } from '@aztec/debugger';
 import type { AztecNode } from '@aztec/stdlib/interfaces/client';
 
 import { CLIWallet } from './wallet.js';
@@ -11,6 +12,7 @@ export const DEFAULT_TX_TIMEOUT_S = 180;
 export class CliWalletAndNodeWrapper {
   private _wallet: CLIWallet | undefined;
   private _node: AztecNode | undefined;
+  private _traceRecorder: TraceRecorder | undefined;
 
   constructor() {}
 
@@ -28,8 +30,14 @@ export class CliWalletAndNodeWrapper {
     return this._node;
   }
 
-  setNodeAndWallet(node: AztecNode, wallet: CLIWallet) {
+  /** Returns the CLI-side debugger recorder when `--debug-capture` was enabled, otherwise undefined. */
+  get traceRecorder(): TraceRecorder | undefined {
+    return this._traceRecorder;
+  }
+
+  setNodeAndWallet(node: AztecNode, wallet: CLIWallet, traceRecorder?: TraceRecorder) {
     this._node = node;
     this._wallet = wallet;
+    this._traceRecorder = traceRecorder;
   }
 }

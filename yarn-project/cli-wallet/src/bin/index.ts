@@ -5,6 +5,7 @@ import { createAztecNodeClient } from '@aztec/aztec.js/node';
 import { ProtocolContractAddress } from '@aztec/aztec.js/protocol';
 import { BackendType, Barretenberg } from '@aztec/bb.js';
 import { LOCALHOST } from '@aztec/cli/cli-utils';
+import type { TraceRecorder } from '@aztec/debugger';
 import { type LogFn, createConsoleLogger, createLogger } from '@aztec/foundation/log';
 import { openStoreAt } from '@aztec/kv-store/lmdb-v2';
 import type { PXEConfig } from '@aztec/pxe/config';
@@ -15,15 +16,53 @@ import { homedir } from 'os';
 import { join } from 'path';
 
 import { injectCommands } from '../cmds/index.js';
+import { TrackingTraceRecorder } from '../cmds/debug/tracking_recorder.js';
 import { Aliases, WalletDB } from '../storage/wallet_db.js';
 import { CliWalletAndNodeWrapper } from '../utils/cli_wallet_and_node_wrapper.js';
-import { createAliasOption } from '../utils/options/index.js';
+import { createAliasOption, createDebugCaptureOption, isDebugCaptureEnvEnabled } from '../utils/options/index.js';
 import { CLIWallet } from '../utils/wallet.js';
 
 const userLog = createConsoleLogger();
 const debugLogger = createLogger('wallet');
 
 const { WALLET_DATA_DIRECTORY = join(homedir(), '.aztec/wallet') } = process.env;
+
+/**
+ * Returns true when the user has explicitly opted into debugger capture for
+ * this invocation: via `--debug-capture` / `AZTEC_WALLET_DEBUG_CAPTURE=1`, by
+ * running a `debug` subcommand, or by passing `--debug-bundle-on-error` to
+ * the active subcommand.
+ */
+function shouldEnableCapture(flag: boolean, actionCommand: Command): boolean {
+  if (flag) {
+    return true;
+  }
+  if (actionCommand.name() === 'debug' || actionCommand.parent?.name() === 'debug') {
+    return true;
+  }
+  const opts = actionCommand.opts() as Record<string, unknown>;
+  if (typeof opts.debugBundleOnError === 'string' && opts.debugBundleOnError.length > 0) {
+    return true;
+  }
+  return false;
+}
+
+function isLocalDebugHintsCommand(actionCommand: Command): boolean {
+  return actionCommand.name() === 'hints' && actionCommand.parent?.name() === 'debug';
+}
+
+async function buildCliTraceRecorder(dataDir: string): Promise<TraceRecorder> {
+  const debugStore = await openStoreAt(join(dataDir, 'debugger'));
+  const { KvTraceRecorder } = await import('@aztec/debugger');
+  const kvRecorder = new KvTraceRecorder(debugStore, {
+    maxTraces: 64,
+    maxSpansPerTrace: 512,
+    maxEventsPerSpan: 128,
+    maxCallFramesPerTrace: 512,
+    maxErrorsPerTrace: 64,
+  });
+  return new TrackingTraceRecorder(kvRecorder);
+}
 
 // TODO: This function is only used in 1 place so we could just inline this
 function injectInternalCommands(program: Command, log: LogFn, db: WalletDB) {
@@ -94,13 +133,18 @@ async function main() {
         .env('AZTEC_NODE_URL')
         .default(`http://${LOCALHOST}:8080`),
     )
-    .hook('preSubcommand', async command => {
+    .addOption(createDebugCaptureOption())
+    .hook('preSubcommand', async (command, actionCommand) => {
       // Skip initialization if user is just requesting help
       if (command.args.includes('--help') || command.args.includes('-h')) {
         return;
       }
+      // `debug hints` is a pure local catalog lookup and must work without a node/PXE.
+      if (isLocalDebugHintsCommand(actionCommand)) {
+        return;
+      }
 
-      const { dataDir, nodeUrl, prover } = command.optsWithGlobals();
+      const { dataDir, nodeUrl, prover, debugCapture } = command.optsWithGlobals();
 
       const proverEnabled = prover !== 'none';
 
@@ -118,10 +162,13 @@ async function main() {
         dataDirectory: join(dataDir, 'pxe'),
       };
 
-      const node = createAztecNodeClient(nodeUrl);
-      const wallet = await CLIWallet.create(node, userLog, db, overridePXEConfig);
+      const captureEnabled = shouldEnableCapture(debugCapture === true || isDebugCaptureEnvEnabled(), actionCommand);
+      const traceRecorder = captureEnabled ? await buildCliTraceRecorder(dataDir) : undefined;
 
-      walletAndNodeWrapper.setNodeAndWallet(node, wallet);
+      const node = createAztecNodeClient(nodeUrl);
+      const wallet = await CLIWallet.create(node, userLog, db, overridePXEConfig, traceRecorder);
+
+      walletAndNodeWrapper.setNodeAndWallet(node, wallet, traceRecorder);
 
       await db.init(await openStoreAt(dataDir));
       let protocolContractsRegistered;

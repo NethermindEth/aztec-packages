@@ -128,6 +128,27 @@ export function createVerboseOption() {
   ).default(false);
 }
 
+export function createDebugCaptureOption() {
+  return new Option(
+    '--debug-capture',
+    'Record debugger traces for this command. Writes to a local debugger store and enables later `aztec-wallet debug` commands. Can also be enabled with AZTEC_WALLET_DEBUG_CAPTURE=1.',
+  ).default(false);
+}
+
+export function isDebugCaptureEnvEnabled(value = process.env.AZTEC_WALLET_DEBUG_CAPTURE): boolean {
+  if (value === undefined) {
+    return false;
+  }
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+}
+
+export function createDebugBundleOnErrorOption() {
+  return new Option(
+    '--debug-bundle-on-error <dir>',
+    'On thrown error, export a strict-redacted debugger bundle under <dir>/<bundleId>/. Implies --debug-capture.',
+  );
+}
+
 export function artifactPathParser(filePath: string, db?: WalletDB) {
   if (filePath.includes('@')) {
     const [pkg, contractName] = filePath.split('@');
