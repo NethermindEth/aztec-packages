@@ -5,7 +5,8 @@
   "exports": {
     ".": "./dest/index.js",
     "./recorder": "./dest/recorder/index.js",
-    "./testing": "./dest/testing/index.js"
+    "./testing": "./dest/testing/index.js",
+    "./bundle": "./dest/bundle/index.js"
   },
   "inherits": [
     "../package.common.json"
