@@ -12,6 +12,10 @@ import { EventSelector } from '@aztec/stdlib/abi';
 import { AztecAddress } from '@aztec/stdlib/aztec-address';
 import { BlockHash, GENESIS_BLOCK_HEADER_HASH, GENESIS_CHECKPOINT_HEADER_HASH } from '@aztec/stdlib/block';
 import { getContractClassFromArtifact } from '@aztec/stdlib/contract';
+import {
+  REDACTION_PREVIEW_REQUEST_SCHEMA_VERSION,
+  TRACE_BUNDLE_EXPORT_REQUEST_SCHEMA_VERSION,
+} from '@aztec/stdlib/debug';
 import type { AztecNode } from '@aztec/stdlib/interfaces/client';
 import { SiloedTag } from '@aztec/stdlib/logs';
 import {
@@ -19,7 +23,7 @@ import {
   randomContractInstanceWithAddress,
   randomDeployedContract,
 } from '@aztec/stdlib/testing';
-import { BlockHeader, GlobalVariables, TxHash } from '@aztec/stdlib/tx';
+import { BlockHeader, GlobalVariables, type PrivateExecutionResult, TxHash } from '@aztec/stdlib/tx';
 
 import { mock } from 'jest-mock-extended';
 import type { MockProxy } from 'jest-mock-extended/lib/Mock.js';
@@ -27,6 +31,60 @@ import type { MockProxy } from 'jest-mock-extended/lib/Mock.js';
 import type { PXEConfig } from './config/index.js';
 import { PXE, type PackedPrivateEvent } from './pxe.js';
 import { PrivateEventStore } from './storage/private_event_store/private_event_store.js';
+
+type FakePrivateCall = {
+  publicInputs: {
+    callContext: {
+      contractAddress: { toString: () => string };
+      functionSelector: { toString: () => string };
+    };
+    argsHash: { toString: () => string };
+    returnsHash: { toString: () => string };
+    startSideEffectCounter: { toString: () => string };
+    endSideEffectCounter: { toString: () => string };
+    noteHashes: { claimedLength: number };
+    nullifiers: { claimedLength: number };
+  };
+  nestedExecutionResults: FakePrivateCall[];
+  partialWitness?: string;
+  acir?: string;
+  vk?: string;
+  newNotes?: string;
+  offchainEffects?: { data: string };
+  taggingIndexRanges?: string;
+  contractClassLogs?: string;
+  returnValues?: string;
+};
+
+function fakeField(value: string): { toString: () => string } {
+  return { toString: () => value };
+}
+
+function fakePrivateCall(contractAddress: string, selector: string, nested: FakePrivateCall[] = []): FakePrivateCall {
+  return {
+    publicInputs: {
+      callContext: {
+        contractAddress: fakeField(contractAddress),
+        functionSelector: fakeField(selector),
+      },
+      argsHash: fakeField(`args-${contractAddress}-${selector}`),
+      returnsHash: fakeField(`returns-${contractAddress}-${selector}`),
+      startSideEffectCounter: fakeField('0'),
+      endSideEffectCounter: fakeField('1'),
+      noteHashes: { claimedLength: 1 },
+      nullifiers: { claimedLength: 2 },
+    },
+    nestedExecutionResults: nested,
+    partialWitness: 'partialWitness-secret',
+    acir: 'acir-secret',
+    vk: 'vk-secret',
+    newNotes: 'newNotes-secret',
+    offchainEffects: { data: 'offchainEffects-secret' },
+    taggingIndexRanges: 'taggingIndexRanges-secret',
+    contractClassLogs: 'contractClassLogs-secret',
+    returnValues: 'returnValues-secret',
+  };
+}
 
 describe('PXE', () => {
   let pxe: PXE;
@@ -378,6 +436,213 @@ describe('PXE', () => {
 
       const handle = await recorder.startTrace({ network: { chainId: 1 } });
       await expect(other.debug.getTrace(handle.traceId)).resolves.toMatchObject({ traceId: handle.traceId });
+
+      const phaseSpan = await recorder.startSpan(handle, {
+        spanId: 'phase-span',
+        name: 'pxe.simulate_tx',
+        component: 'pxe',
+        phase: 'pxe_execution',
+        kind: 'private',
+        sensitivity: 'secret_local',
+        status: 'ok',
+      });
+      const privateExecutionResult = {
+        entrypoint: fakePrivateCall('0xROOT', '0xROOT_SEL', [fakePrivateCall('0xCHILD', '0xCHILD_SEL')]),
+      } as unknown as PrivateExecutionResult;
+
+      await other.debug.recordPrivateCallFrames(handle, phaseSpan, privateExecutionResult);
+
+      const trace = await recorder.getTrace(handle.traceId);
+      expect(trace?.callFrames.length).toBe(2);
+      expect(trace?.callFrames[0].parentCallFrameId).toBeUndefined();
+      expect(trace?.callFrames[1].parentCallFrameId).toBe(trace?.callFrames[0].callFrameId);
+      expect(trace?.callFrames.every(frame => frame.sensitivity === 'secret_local')).toBe(true);
+      const privateCallSpans = trace?.spans.filter(span => span.name === 'pxe.private_call') ?? [];
+      expect(privateCallSpans).toHaveLength(2);
+      expect(privateCallSpans[0].parentSpanId).toBe('phase-span');
+      expect(privateCallSpans[1].parentSpanId).toBe(privateCallSpans[0].spanId);
+      const frameBlob = JSON.stringify(trace?.callFrames);
+      for (const forbidden of [
+        'partialWitness',
+        'acir',
+        'vk',
+        'newNotes',
+        'offchainEffects',
+        'taggingIndexRanges',
+        'contractClassLogs',
+        'returnValues',
+      ]) {
+        expect(frameBlob).not.toContain(forbidden);
+      }
+
+      await other.stop();
+    });
+
+    it('pxe.debug.redactionPreview returns undefined for an unknown trace', async () => {
+      const recorder = new InMemoryTraceRecorder({
+        maxTraces: 2,
+        maxSpansPerTrace: 2,
+        maxEventsPerSpan: 2,
+        maxErrorsPerTrace: 2,
+      });
+      const store = await openTmpStore('pxe-debug-preview-unknown');
+      const simulator = new WASMSimulator();
+      const kernelProver = new BBBundlePrivateKernelProver(simulator);
+      const protocolContractsProvider = new BundledProtocolContractsProvider();
+      const config: PXEConfig = {
+        l2BlockBatchSize: 50,
+        dataDirectory: undefined,
+        dataStoreMapSizeKb: 1024 * 1024,
+        l1Contracts: { rollupAddress: EthAddress.random() },
+        l1ChainId: 31337,
+        rollupVersion: 1,
+      };
+      const other = await PXE.create({
+        node,
+        store,
+        proofCreator: kernelProver,
+        simulator,
+        protocolContractsProvider,
+        config,
+        traceRecorder: recorder,
+      });
+
+      await expect(
+        other.debug.redactionPreview({
+          schemaVersion: REDACTION_PREVIEW_REQUEST_SCHEMA_VERSION,
+          traceId: 'does-not-exist',
+          policy: 'strict',
+        }),
+      ).resolves.toBeUndefined();
+
+      await other.stop();
+    });
+
+    it('pxe.debug.exportBundle refuses non-strict policies and returns undefined', async () => {
+      const recorder = new InMemoryTraceRecorder({
+        maxTraces: 2,
+        maxSpansPerTrace: 2,
+        maxEventsPerSpan: 2,
+        maxErrorsPerTrace: 2,
+      });
+      const store = await openTmpStore('pxe-debug-export-refused');
+      const simulator = new WASMSimulator();
+      const kernelProver = new BBBundlePrivateKernelProver(simulator);
+      const protocolContractsProvider = new BundledProtocolContractsProvider();
+      const config: PXEConfig = {
+        l2BlockBatchSize: 50,
+        dataDirectory: undefined,
+        dataStoreMapSizeKb: 1024 * 1024,
+        l1Contracts: { rollupAddress: EthAddress.random() },
+        l1ChainId: 31337,
+        rollupVersion: 1,
+      };
+      const other = await PXE.create({
+        node,
+        store,
+        proofCreator: kernelProver,
+        simulator,
+        protocolContractsProvider,
+        config,
+        traceRecorder: recorder,
+      });
+
+      const handle = await recorder.startTrace({ network: { chainId: 1 } });
+      for (const policy of ['balanced', 'local_full'] as const) {
+        await expect(
+          other.debug.exportBundle({
+            schemaVersion: TRACE_BUNDLE_EXPORT_REQUEST_SCHEMA_VERSION,
+            traceId: handle.traceId,
+            policy,
+          }),
+        ).resolves.toBeUndefined();
+      }
+
+      await other.stop();
+    });
+
+    it('pxe.debug.exportBundle returns undefined for an unknown trace', async () => {
+      const recorder = new InMemoryTraceRecorder({
+        maxTraces: 2,
+        maxSpansPerTrace: 2,
+        maxEventsPerSpan: 2,
+        maxErrorsPerTrace: 2,
+      });
+      const store = await openTmpStore('pxe-debug-export-unknown');
+      const simulator = new WASMSimulator();
+      const kernelProver = new BBBundlePrivateKernelProver(simulator);
+      const protocolContractsProvider = new BundledProtocolContractsProvider();
+      const config: PXEConfig = {
+        l2BlockBatchSize: 50,
+        dataDirectory: undefined,
+        dataStoreMapSizeKb: 1024 * 1024,
+        l1Contracts: { rollupAddress: EthAddress.random() },
+        l1ChainId: 31337,
+        rollupVersion: 1,
+      };
+      const other = await PXE.create({
+        node,
+        store,
+        proofCreator: kernelProver,
+        simulator,
+        protocolContractsProvider,
+        config,
+        traceRecorder: recorder,
+      });
+
+      await expect(
+        other.debug.exportBundle({
+          schemaVersion: TRACE_BUNDLE_EXPORT_REQUEST_SCHEMA_VERSION,
+          traceId: 'does-not-exist',
+          policy: 'strict',
+        }),
+      ).resolves.toBeUndefined();
+
+      await other.stop();
+    });
+
+    it('pxe.debug.exportBundle with strict policy produces a schema-valid bundle for an empty trace', async () => {
+      const recorder = new InMemoryTraceRecorder({
+        maxTraces: 2,
+        maxSpansPerTrace: 2,
+        maxEventsPerSpan: 2,
+        maxErrorsPerTrace: 2,
+      });
+      const store = await openTmpStore('pxe-debug-export-success');
+      const simulator = new WASMSimulator();
+      const kernelProver = new BBBundlePrivateKernelProver(simulator);
+      const protocolContractsProvider = new BundledProtocolContractsProvider();
+      const config: PXEConfig = {
+        l2BlockBatchSize: 50,
+        dataDirectory: undefined,
+        dataStoreMapSizeKb: 1024 * 1024,
+        l1Contracts: { rollupAddress: EthAddress.random() },
+        l1ChainId: 31337,
+        rollupVersion: 1,
+      };
+      const other = await PXE.create({
+        node,
+        store,
+        proofCreator: kernelProver,
+        simulator,
+        protocolContractsProvider,
+        config,
+        traceRecorder: recorder,
+      });
+
+      const handle = await recorder.startTrace({ network: { chainId: 1 } });
+      const bundle = await other.debug.exportBundle({
+        schemaVersion: TRACE_BUNDLE_EXPORT_REQUEST_SCHEMA_VERSION,
+        traceId: handle.traceId,
+        policy: 'strict',
+      });
+
+      expect(bundle).toBeDefined();
+      expect(bundle!.result.bundleId).toBeDefined();
+      expect(bundle!.attachments.has('manifest.json')).toBe(true);
+      expect(bundle!.attachments.has('trace.json')).toBe(true);
+      expect(bundle!.attachments.has('redaction.json')).toBe(true);
+      expect(bundle!.result.manifest.files.map(f => f.path)).not.toContain('manifest.json');
 
       await other.stop();
     });

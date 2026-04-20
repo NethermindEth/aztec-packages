@@ -6,8 +6,8 @@ import {
   type TraceRecorder,
   safeRecorderCall,
 } from '@aztec/debugger';
+import { type ClassifyStage, classifyPxeError, mapErrorCodeToTraceError } from '@aztec/debugger/errors';
 import { BlockNumber } from '@aztec/foundation/branded-types';
-import { randomBytes } from '@aztec/foundation/crypto/random';
 import { Fr } from '@aztec/foundation/curves/bn254';
 import { type Logger, type LoggerBindings, createLogger } from '@aztec/foundation/log';
 import { SerialQueue } from '@aztec/foundation/queue';
@@ -34,12 +34,7 @@ import {
   computeContractAddressFromInstance,
   getContractClassFromArtifact,
 } from '@aztec/stdlib/contract';
-import {
-  AZTEC_TRACE_ERROR_SCHEMA_VERSION,
-  type AztecTraceError,
-  type AztecTraceErrorCategory,
-  type AztecTracePhase,
-} from '@aztec/stdlib/debug';
+import type { AztecTraceError, AztecTraceErrorCategory, AztecTracePhase } from '@aztec/stdlib/debug';
 import { SimulationError } from '@aztec/stdlib/errors';
 import type { AztecNode, PrivateKernelProver } from '@aztec/stdlib/interfaces/client';
 import type {
@@ -273,7 +268,14 @@ export class PXE {
       contractSyncService,
     ]);
 
-    const debugUtils = new PXEDebugUtils(contractSyncService, noteStore, synchronizer, anchorBlockStore, recorder);
+    const debugUtils = new PXEDebugUtils(
+      contractSyncService,
+      noteStore,
+      synchronizer,
+      anchorBlockStore,
+      contractStore,
+      recorder,
+    );
 
     const jobQueue = new SerialQueue();
 
@@ -345,7 +347,7 @@ export class PXE {
    * Starts a PXE phase span under a trace handle. Returns undefined if no trace handle is
    * supplied or the recorder fails.
    */
-  async #startPhaseSpan(
+  #startPhaseSpan(
     traceHandle: TraceHandle | undefined,
     name: string,
     phase: AztecTracePhase,
@@ -353,7 +355,7 @@ export class PXE {
     attributes?: Record<string, string | number | boolean>,
   ): Promise<SpanHandle | undefined> {
     if (!traceHandle) {
-      return undefined;
+      return Promise.resolve(undefined);
     }
     return safeRecorderCall<SpanHandle | undefined>(
       'startSpan',
@@ -378,23 +380,21 @@ export class PXE {
   async #recordPhaseError(
     traceHandle: TraceHandle | undefined,
     phaseSpan: SpanHandle | undefined,
+    phase: AztecTracePhase,
     category: AztecTraceErrorCategory,
     err: unknown,
+    stage?: ClassifyStage,
   ): Promise<void> {
     if (!traceHandle) {
       return;
     }
-    const errorPayload: AztecTraceError = {
-      schemaVersion: AZTEC_TRACE_ERROR_SCHEMA_VERSION,
-      errorId: randomBytes(16).toString('hex'),
-      code: 'AZDBG_UNKNOWN',
-      message: err instanceof Error ? err.message : String(err),
-      category,
-      severity: 'error',
-      retryable: false,
-      errorType: err instanceof Error ? err.name : typeof err,
-      spanId: phaseSpan?.spanId,
-    };
+    const code = classifyPxeError(err, { phase, category, stage });
+    const errorPayload: AztecTraceError = mapErrorCodeToTraceError(
+      code,
+      err,
+      { phase, category, stage },
+      phaseSpan?.spanId,
+    );
     await safeRecorderCall('recordError', () => this.traceRecorder.recordError(traceHandle, errorPayload), undefined);
     if (phaseSpan) {
       await safeRecorderCall('endSpan', () => this.traceRecorder.endSpan(phaseSpan, { status: 'error' }), undefined);
@@ -917,6 +917,10 @@ export class PXE {
             const contractFunctionSimulator = this.#getSimulatorForTx();
             privateExecutionResult = await this.#executePrivate(contractFunctionSimulator, txRequest, scopes, jobId);
 
+            if (traceHandle && phaseSpan) {
+              await this.debug.recordPrivateCallFrames(traceHandle, phaseSpan, privateExecutionResult);
+            }
+
             const {
               publicInputs,
               chonkProof,
@@ -980,7 +984,7 @@ export class PXE {
       await this.#endPhaseSpanOk(phaseSpan);
       return result;
     } catch (err) {
-      await this.#recordPhaseError(traceHandle, phaseSpan, 'proving', err);
+      await this.#recordPhaseError(traceHandle, phaseSpan, 'proving', 'proving', err, 'proving');
       throw err;
     }
   }
@@ -1029,6 +1033,10 @@ export class PXE {
               jobId,
             );
 
+            if (traceHandle && phaseSpan) {
+              await this.debug.recordPrivateCallFrames(traceHandle, phaseSpan, privateExecutionResult);
+            }
+
             const { executionSteps, timings: { proving } = {} } = await this.#prove(
               txRequest,
               this.proofCreator,
@@ -1076,7 +1084,7 @@ export class PXE {
       await this.#endPhaseSpanOk(phaseSpan);
       return result;
     } catch (err) {
-      await this.#recordPhaseError(traceHandle, phaseSpan, 'pxe', err);
+      await this.#recordPhaseError(traceHandle, phaseSpan, 'pxe_execution', 'pxe', err, 'private');
       throw err;
     }
   }
@@ -1115,6 +1123,10 @@ export class PXE {
       'aztec.tx.origin': txRequest.origin.toString(),
       'aztec.tx.function_selector': txRequest.functionSelector.toString(),
     });
+    // Track which simulation stage is currently active so the classifier can distinguish
+    // private simulation failures from public-call reverts without parsing error messages.
+    // Held on an object so inner-closure assignments are visible to the outer catch.
+    const stageRef: { value: ClassifyStage } = { value: 'private' };
     // We disable concurrent simulations since those might execute oracles which read and write to the PXE stores (e.g.
     // to the capsules), and we need to prevent concurrent runs from interfering with one another (e.g. attempting to
     // delete the same read value, or reading values that another simulation is currently modifying).
@@ -1156,6 +1168,7 @@ export class PXE {
             }
 
             // Execution of private functions only; no proving, and no kernel logic.
+            stageRef.value = 'private';
             const privateExecutionResult = await this.#executePrivate(
               contractFunctionSimulator,
               txRequest,
@@ -1163,9 +1176,14 @@ export class PXE {
               jobId,
             );
 
+            if (traceHandle && phaseSpan) {
+              await this.debug.recordPrivateCallFrames(traceHandle, phaseSpan, privateExecutionResult);
+            }
+
             let publicInputs: PrivateKernelTailCircuitPublicInputs | undefined;
             let executionSteps: PrivateExecutionStep[] = [];
 
+            stageRef.value = 'kernel';
             if (skipKernels) {
               ({ publicInputs, executionSteps } = await generateSimulatedProvingResult(
                 privateExecutionResult,
@@ -1192,6 +1210,7 @@ export class PXE {
             let publicOutput: PublicSimulationOutput | undefined;
             if (simulatePublic && publicInputs.forPublic) {
               const publicSimulationTimer = new Timer();
+              stageRef.value = 'public';
               publicOutput = await this.#simulatePublicCalls(simulatedTx, skipFeeEnforcement);
               publicSimulationTime = publicSimulationTimer.ms();
               if (publicOutput?.debugLogs?.length) {
@@ -1201,6 +1220,7 @@ export class PXE {
 
             let validationTime: number | undefined;
             if (!skipTxValidation) {
+              stageRef.value = 'validation';
               const validationTimer = new Timer();
               const validationResult = await this.node.isValidTx(simulatedTx, {
                 isSimulation: true,
@@ -1274,7 +1294,8 @@ export class PXE {
       await this.#endPhaseSpanOk(phaseSpan);
       return result;
     } catch (err) {
-      await this.#recordPhaseError(traceHandle, phaseSpan, 'pxe', err);
+      const category: AztecTraceErrorCategory = stageRef.value === 'public' ? 'node' : 'pxe';
+      await this.#recordPhaseError(traceHandle, phaseSpan, 'pxe_execution', category, err, stageRef.value);
       throw err;
     }
   }
@@ -1358,7 +1379,7 @@ export class PXE {
       await this.#endPhaseSpanOk(phaseSpan);
       return result;
     } catch (err) {
-      await this.#recordPhaseError(traceHandle, phaseSpan, 'pxe', err);
+      await this.#recordPhaseError(traceHandle, phaseSpan, 'pxe_execution', 'pxe', err, 'utility');
       throw err;
     }
   }
