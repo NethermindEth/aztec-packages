@@ -1,6 +1,8 @@
+import { type TraceRecorder, safeRecorderCall } from '@aztec/debugger';
 import type { FunctionCall } from '@aztec/stdlib/abi';
 import type { AuthWitness } from '@aztec/stdlib/auth-witness';
 import type { AztecAddress } from '@aztec/stdlib/aztec-address';
+import type { AztecTrace } from '@aztec/stdlib/debug';
 import type { NoteDao } from '@aztec/stdlib/note';
 import type { ContractOverrides } from '@aztec/stdlib/tx';
 
@@ -31,7 +33,20 @@ export class PXEDebugUtils {
     private noteStore: NoteStore,
     private blockStateSynchronizer: BlockSynchronizer,
     private anchorBlockStore: AnchorBlockStore,
+    public readonly recorder: TraceRecorder,
   ) {}
+
+  /**
+   * Returns a recorded trace by trace id, tx hash, or provisional id. Resolves to undefined if
+   * the trace is unknown or the recorder fails.
+   */
+  public getTrace(idOrTxHashOrProvisionalId: string): Promise<AztecTrace | undefined> {
+    return safeRecorderCall<AztecTrace | undefined>(
+      'getTrace',
+      () => this.recorder.getTrace(idOrTxHashOrProvisionalId),
+      undefined,
+    );
+  }
 
   /** Not injected through constructor since they're are co-dependant */
   public setPXEHelpers(

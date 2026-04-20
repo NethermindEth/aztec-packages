@@ -1176,7 +1176,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@aztec/debugger@workspace:debugger":
+"@aztec/debugger@workspace:^, @aztec/debugger@workspace:debugger":
   version: 0.0.0-use.local
   resolution: "@aztec/debugger@workspace:debugger"
   dependencies:
@@ -1908,6 +1908,7 @@ __metadata:
     "@aztec/bb.js": "portal:../../barretenberg/ts"
     "@aztec/builder": "workspace:^"
     "@aztec/constants": "workspace:^"
+    "@aztec/debugger": "workspace:^"
     "@aztec/ethereum": "workspace:^"
     "@aztec/foundation": "workspace:^"
     "@aztec/key-store": "workspace:^"
@@ -2258,6 +2259,7 @@ __metadata:
   dependencies:
     "@aztec/aztec.js": "workspace:^"
     "@aztec/constants": "workspace:^"
+    "@aztec/debugger": "workspace:^"
     "@aztec/entrypoints": "workspace:^"
     "@aztec/foundation": "workspace:^"
     "@aztec/noir-contracts.js": "workspace:^"

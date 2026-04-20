@@ -65,6 +65,7 @@ export async function createPXE(
     protocolContractsProvider,
     config: configWithContracts,
     loggerOrSuffix: pxeLogger,
+    traceRecorder: options.traceRecorder,
   });
   return pxe;
 }

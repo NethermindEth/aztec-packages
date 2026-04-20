@@ -1,4 +1,5 @@
 import { BBBundlePrivateKernelProver } from '@aztec/bb-prover/client/bundle';
+import { InMemoryTraceRecorder, NoopTraceRecorder } from '@aztec/debugger';
 import type { L1ContractAddresses } from '@aztec/ethereum/l1-contract-addresses';
 import { BlockNumber, CheckpointNumber } from '@aztec/foundation/branded-types';
 import { Fr } from '@aztec/foundation/curves/bn254';
@@ -333,4 +334,52 @@ describe('PXE', () => {
   });
   // Note: Not testing a successful run of `proveTx`, `sendTx`, `getTxReceipt` and `executeUtility` here as it
   //       requires a larger setup and it's sufficiently tested in the e2e tests.
+
+  describe('traceRecorder', () => {
+    it('defaults to a NoopTraceRecorder when no recorder is configured', () => {
+      expect(pxe.debug.recorder).toBeInstanceOf(NoopTraceRecorder);
+    });
+
+    it('pxe.debug.getTrace resolves to undefined for unknown ids under the default recorder', async () => {
+      await expect(pxe.debug.getTrace('unknown')).resolves.toBeUndefined();
+    });
+
+    it('forwards a user-provided traceRecorder to pxe.debug.recorder', async () => {
+      const recorder = new InMemoryTraceRecorder({
+        maxTraces: 4,
+        maxSpansPerTrace: 4,
+        maxEventsPerSpan: 4,
+        maxErrorsPerTrace: 4,
+      });
+      const store = await openTmpStore('test-trace-recorder');
+      const simulator = new WASMSimulator();
+      const kernelProver = new BBBundlePrivateKernelProver(simulator);
+      const protocolContractsProvider = new BundledProtocolContractsProvider();
+      const config: PXEConfig = {
+        l2BlockBatchSize: 50,
+        dataDirectory: undefined,
+        dataStoreMapSizeKb: 1024 * 1024,
+        l1Contracts: { rollupAddress: EthAddress.random() },
+        l1ChainId: 31337,
+        rollupVersion: 1,
+      };
+
+      const other = await PXE.create({
+        node,
+        store,
+        proofCreator: kernelProver,
+        simulator,
+        protocolContractsProvider,
+        config,
+        traceRecorder: recorder,
+      });
+
+      expect(other.debug.recorder).toBe(recorder);
+
+      const handle = await recorder.startTrace({ network: { chainId: 1 } });
+      await expect(other.debug.getTrace(handle.traceId)).resolves.toMatchObject({ traceId: handle.traceId });
+
+      await other.stop();
+    });
+  });
 });

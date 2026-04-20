@@ -1,5 +1,13 @@
 import type { PrivateEventFilter } from '@aztec/aztec.js/wallet';
+import {
+  NoopTraceRecorder,
+  type SpanHandle,
+  type TraceHandle,
+  type TraceRecorder,
+  safeRecorderCall,
+} from '@aztec/debugger';
 import { BlockNumber } from '@aztec/foundation/branded-types';
+import { randomBytes } from '@aztec/foundation/crypto/random';
 import { Fr } from '@aztec/foundation/curves/bn254';
 import { type Logger, type LoggerBindings, createLogger } from '@aztec/foundation/log';
 import { SerialQueue } from '@aztec/foundation/queue';
@@ -26,6 +34,12 @@ import {
   computeContractAddressFromInstance,
   getContractClassFromArtifact,
 } from '@aztec/stdlib/contract';
+import {
+  AZTEC_TRACE_ERROR_SCHEMA_VERSION,
+  type AztecTraceError,
+  type AztecTraceErrorCategory,
+  type AztecTracePhase,
+} from '@aztec/stdlib/debug';
 import { SimulationError } from '@aztec/stdlib/errors';
 import type { AztecNode, PrivateKernelProver } from '@aztec/stdlib/interfaces/client';
 import type {
@@ -97,6 +111,8 @@ export type ProfileTxOpts = {
   skipProofGeneration?: boolean;
   /** Addresses whose private state and keys are accessible during private execution. */
   scopes: AztecAddress[];
+  /** Optional debugger trace handle under which to record phase/job spans. */
+  traceHandle?: TraceHandle;
 };
 
 /** Options for PXE.simulateTx. */
@@ -113,6 +129,8 @@ export type SimulateTxOpts = {
   overrides?: SimulationOverrides;
   /** Addresses whose private state and keys are accessible during private execution */
   scopes: AztecAddress[];
+  /** Optional debugger trace handle under which to record phase/job spans. */
+  traceHandle?: TraceHandle;
 };
 
 /** Options for PXE.executeUtility. */
@@ -121,6 +139,14 @@ export type ExecuteUtilityOpts = {
   authwits?: AuthWitness[];
   /** The accounts whose notes we can access in this call */
   scopes: AztecAddress[];
+  /** Optional debugger trace handle under which to record phase/job spans. */
+  traceHandle?: TraceHandle;
+};
+
+/** Options for PXE.proveTx. */
+export type ProveTxOpts = {
+  /** Optional debugger trace handle under which to record phase/job spans. */
+  traceHandle?: TraceHandle;
 };
 
 /** Args for PXE.create. */
@@ -139,6 +165,8 @@ export type PXECreateArgs = {
   config: PXEConfig;
   /** Optional logger instance or string suffix for the logger name. */
   loggerOrSuffix?: string | Logger;
+  /** Optional debugger trace recorder. Defaults to a no-op recorder. */
+  traceRecorder?: TraceRecorder;
 };
 
 /**
@@ -170,6 +198,7 @@ export class PXE {
     private log: Logger,
     private jobQueue: SerialQueue,
     private jobCoordinator: JobCoordinator,
+    private traceRecorder: TraceRecorder,
     public debug: PXEDebugUtils,
   ) {}
 
@@ -188,7 +217,9 @@ export class PXE {
     protocolContractsProvider,
     config,
     loggerOrSuffix,
+    traceRecorder,
   }: PXECreateArgs) {
+    const recorder: TraceRecorder = traceRecorder ?? new NoopTraceRecorder();
     // Extract bindings from the logger, or use empty bindings if a string suffix is provided.
     const bindings: LoggerBindings | undefined =
       loggerOrSuffix && typeof loggerOrSuffix !== 'string' ? loggerOrSuffix.getBindings() : undefined;
@@ -242,7 +273,7 @@ export class PXE {
       contractSyncService,
     ]);
 
-    const debugUtils = new PXEDebugUtils(contractSyncService, noteStore, synchronizer, anchorBlockStore);
+    const debugUtils = new PXEDebugUtils(contractSyncService, noteStore, synchronizer, anchorBlockStore, recorder);
 
     const jobQueue = new SerialQueue();
 
@@ -270,6 +301,7 @@ export class PXE {
       log,
       jobQueue,
       jobCoordinator,
+      recorder,
       debugUtils,
     );
 
@@ -309,6 +341,76 @@ export class PXE {
     });
   }
 
+  /**
+   * Starts a PXE phase span under a trace handle. Returns undefined if no trace handle is
+   * supplied or the recorder fails.
+   */
+  async #startPhaseSpan(
+    traceHandle: TraceHandle | undefined,
+    name: string,
+    phase: AztecTracePhase,
+    kind: 'private' | 'utility' | undefined,
+    attributes?: Record<string, string | number | boolean>,
+  ): Promise<SpanHandle | undefined> {
+    if (!traceHandle) {
+      return undefined;
+    }
+    return safeRecorderCall<SpanHandle | undefined>(
+      'startSpan',
+      () =>
+        this.traceRecorder.startSpan(traceHandle, {
+          name,
+          component: 'pxe',
+          phase,
+          kind,
+          sensitivity: 'secret_local',
+          status: 'ok',
+          attributes,
+        }),
+      undefined,
+    );
+  }
+
+  /**
+   * Records an error against a trace and ends the phase span with status=error. Swallows all
+   * recorder failures.
+   */
+  async #recordPhaseError(
+    traceHandle: TraceHandle | undefined,
+    phaseSpan: SpanHandle | undefined,
+    category: AztecTraceErrorCategory,
+    err: unknown,
+  ): Promise<void> {
+    if (!traceHandle) {
+      return;
+    }
+    const errorPayload: AztecTraceError = {
+      schemaVersion: AZTEC_TRACE_ERROR_SCHEMA_VERSION,
+      errorId: randomBytes(16).toString('hex'),
+      code: 'AZDBG_UNKNOWN',
+      message: err instanceof Error ? err.message : String(err),
+      category,
+      severity: 'error',
+      retryable: false,
+      errorType: err instanceof Error ? err.name : typeof err,
+      spanId: phaseSpan?.spanId,
+    };
+    await safeRecorderCall('recordError', () => this.traceRecorder.recordError(traceHandle, errorPayload), undefined);
+    if (phaseSpan) {
+      await safeRecorderCall('endSpan', () => this.traceRecorder.endSpan(phaseSpan, { status: 'error' }), undefined);
+    }
+  }
+
+  /**
+   * Ends a phase span with status=ok. No-op if no span is supplied.
+   */
+  async #endPhaseSpanOk(phaseSpan: SpanHandle | undefined): Promise<void> {
+    if (!phaseSpan) {
+      return;
+    }
+    await safeRecorderCall('endSpan', () => this.traceRecorder.endSpan(phaseSpan, { status: 'ok' }), undefined);
+  }
+
   #contextualizeError(err: Error, ...context: string[]): Error {
     let contextStr = '';
     if (context.length > 0) {
@@ -328,16 +430,44 @@ export class PXE {
    * complete.
    *
    * Useful for tasks that cannot run concurrently, such as contract function simulation.
+   *
+   * When `opts.traceHandle` is provided, wraps the job in a `pxe.job` child span whose parent is
+   * `opts.parentSpanId` and whose phase is `opts.phase`.
    */
-  #putInJobQueue<T>(fn: (jobId: string) => Promise<T>): Promise<T> {
+  #putInJobQueue<T>(
+    fn: (jobId: string) => Promise<T>,
+    opts?: { traceHandle?: TraceHandle; parentSpanId?: string; phase?: AztecTracePhase },
+  ): Promise<T> {
     // TODO(#12636): relax the conditions under which we forbid concurrency.
-    if (this.jobQueue.length() != 0) {
+    const queueLengthBefore = this.jobQueue.length();
+    if (queueLengthBefore != 0) {
       this.log.warn(
-        `PXE is already processing ${this.jobQueue.length()} jobs, concurrent execution is not supported. Will run once those are complete.`,
+        `PXE is already processing ${queueLengthBefore} jobs, concurrent execution is not supported. Will run once those are complete.`,
       );
     }
 
     return this.jobQueue.put(async () => {
+      const traceHandle = opts?.traceHandle;
+      const jobPhase = opts?.phase;
+      let jobSpan: SpanHandle | undefined;
+
+      if (traceHandle && jobPhase) {
+        jobSpan = await safeRecorderCall<SpanHandle | undefined>(
+          'startSpan',
+          () =>
+            this.traceRecorder.startSpan(traceHandle, {
+              name: 'pxe.job',
+              component: 'pxe',
+              phase: jobPhase,
+              parentSpanId: opts?.parentSpanId,
+              sensitivity: 'secret_local',
+              status: 'ok',
+              attributes: { 'aztec.pxe.queue_length_before': queueLengthBefore },
+            }),
+          undefined,
+        );
+      }
+
       const jobId = this.jobCoordinator.beginJob();
       this.log.verbose(`Beginning job ${jobId}`);
 
@@ -346,10 +476,32 @@ export class PXE {
         this.log.verbose(`Committing job ${jobId}`);
 
         await this.jobCoordinator.commitJob(jobId);
+        if (jobSpan) {
+          await safeRecorderCall(
+            'endSpan',
+            () =>
+              this.traceRecorder.endSpan(jobSpan!, {
+                status: 'ok',
+                attributes: { 'aztec.pxe.job_id': jobId, 'aztec.pxe.job_status': 'committed' },
+              }),
+            undefined,
+          );
+        }
         return result;
       } catch (err) {
         this.log.verbose(`Aborting job ${jobId}`);
         await this.jobCoordinator.abortJob(jobId);
+        if (jobSpan) {
+          await safeRecorderCall(
+            'endSpan',
+            () =>
+              this.traceRecorder.endSpan(jobSpan!, {
+                status: 'error',
+                attributes: { 'aztec.pxe.job_id': jobId, 'aztec.pxe.job_status': 'aborted' },
+              }),
+            undefined,
+          );
+        }
         throw err;
       }
     });
@@ -741,77 +893,96 @@ export class PXE {
    * @throws If contract code not found, or public simulation reverts.
    * Also throws if simulatePublic is true and public simulation reverts.
    */
-  public proveTx(txRequest: TxExecutionRequest, scopes: AztecAddress[]): Promise<TxProvingResult> {
+  public async proveTx(
+    txRequest: TxExecutionRequest,
+    scopes: AztecAddress[],
+    opts?: ProveTxOpts,
+  ): Promise<TxProvingResult> {
+    const traceHandle = opts?.traceHandle;
+    const phaseSpan = await this.#startPhaseSpan(traceHandle, 'pxe.prove_tx', 'proving', 'private', {
+      'aztec.tx.origin': txRequest.origin.toString(),
+      'aztec.tx.function_selector': txRequest.functionSelector.toString(),
+    });
     let privateExecutionResult: PrivateExecutionResult;
     // We disable proving concurrently mostly out of caution, since it accesses some of our stores. Proving is so
     // computationally demanding that it'd be rare for someone to try to do it concurrently regardless.
-    return this.#putInJobQueue(async jobId => {
-      const totalTimer = new Timer();
-      try {
-        const syncTimer = new Timer();
-        await this.blockStateSynchronizer.sync();
-        const syncTime = syncTimer.ms();
-        const contractFunctionSimulator = this.#getSimulatorForTx();
-        privateExecutionResult = await this.#executePrivate(contractFunctionSimulator, txRequest, scopes, jobId);
+    try {
+      const result = await this.#putInJobQueue(
+        async jobId => {
+          const totalTimer = new Timer();
+          try {
+            const syncTimer = new Timer();
+            await this.blockStateSynchronizer.sync();
+            const syncTime = syncTimer.ms();
+            const contractFunctionSimulator = this.#getSimulatorForTx();
+            privateExecutionResult = await this.#executePrivate(contractFunctionSimulator, txRequest, scopes, jobId);
 
-        const {
-          publicInputs,
-          chonkProof,
-          executionSteps,
-          timings: { proving } = {},
-        } = await this.#prove(txRequest, this.proofCreator, privateExecutionResult, {
-          simulate: false,
-          skipFeeEnforcement: false,
-          profileMode: 'none',
-        });
+            const {
+              publicInputs,
+              chonkProof,
+              executionSteps,
+              timings: { proving } = {},
+            } = await this.#prove(txRequest, this.proofCreator, privateExecutionResult, {
+              simulate: false,
+              skipFeeEnforcement: false,
+              profileMode: 'none',
+            });
 
-        const totalTime = totalTimer.ms();
+            const totalTime = totalTimer.ms();
 
-        const perFunction = executionSteps.map(({ functionName, timings: { witgen, oracles } }) => ({
-          functionName,
-          time: witgen,
-          oracles,
-        }));
+            const perFunction = executionSteps.map(({ functionName, timings: { witgen, oracles } }) => ({
+              functionName,
+              time: witgen,
+              oracles,
+            }));
 
-        const timings: ProvingTimings = {
-          total: totalTime,
-          sync: syncTime,
-          proving,
-          perFunction,
-          unaccounted:
-            totalTime - ((syncTime ?? 0) + (proving ?? 0) + perFunction.reduce((acc, { time }) => acc + time, 0)),
-        };
+            const timings: ProvingTimings = {
+              total: totalTime,
+              sync: syncTime,
+              proving,
+              perFunction,
+              unaccounted:
+                totalTime - ((syncTime ?? 0) + (proving ?? 0) + perFunction.reduce((acc, { time }) => acc + time, 0)),
+            };
 
-        this.log.debug(`Proving completed in ${totalTime}ms`, { timings });
+            this.log.debug(`Proving completed in ${totalTime}ms`, { timings });
 
-        const txProvingResult = new TxProvingResult(privateExecutionResult, publicInputs, chonkProof!, {
-          timings,
-          nodeRPCCalls: contractFunctionSimulator?.getStats().nodeRPCCalls,
-        });
+            const txProvingResult = new TxProvingResult(privateExecutionResult, publicInputs, chonkProof!, {
+              timings,
+              nodeRPCCalls: contractFunctionSimulator?.getStats().nodeRPCCalls,
+            });
 
-        // While not strictly necessary to store tagging cache contents in the DB since we sync tagging indexes from
-        // chain before sending new logs, the sync can only see logs already included in blocks. If we send another
-        // transaction before this one is included in a block from this PXE, and that transaction contains a log with
-        // a tag derived from the same secret, we would reuse the tag and the transactions would be linked. Hence
-        // storing the tags here prevents linkage of txs sent from the same PXE.
-        const taggingIndexRangesUsedInTheTx = privateExecutionResult.entrypoint.taggingIndexRanges;
-        if (taggingIndexRangesUsedInTheTx.length > 0) {
-          // TODO(benesjan): The following is an expensive operation. Figure out a way to avoid it.
-          const txHash = (await txProvingResult.toTx()).txHash;
+            // While not strictly necessary to store tagging cache contents in the DB since we sync tagging indexes from
+            // chain before sending new logs, the sync can only see logs already included in blocks. If we send another
+            // transaction before this one is included in a block from this PXE, and that transaction contains a log with
+            // a tag derived from the same secret, we would reuse the tag and the transactions would be linked. Hence
+            // storing the tags here prevents linkage of txs sent from the same PXE.
+            const taggingIndexRangesUsedInTheTx = privateExecutionResult.entrypoint.taggingIndexRanges;
+            if (taggingIndexRangesUsedInTheTx.length > 0) {
+              // TODO(benesjan): The following is an expensive operation. Figure out a way to avoid it.
+              const txHash = (await txProvingResult.toTx()).txHash;
 
-          await this.senderTaggingStore.storePendingIndexes(taggingIndexRangesUsedInTheTx, txHash, jobId);
-          this.log.debug(`Stored used tagging index ranges as sender for the tx`, {
-            taggingIndexRangesUsedInTheTx,
-          });
-        } else {
-          this.log.debug(`No tagging index ranges used in the tx`);
-        }
+              await this.senderTaggingStore.storePendingIndexes(taggingIndexRangesUsedInTheTx, txHash, jobId);
+              this.log.debug(`Stored used tagging index ranges as sender for the tx`, {
+                taggingIndexRangesUsedInTheTx,
+              });
+            } else {
+              this.log.debug(`No tagging index ranges used in the tx`);
+            }
 
-        return txProvingResult;
-      } catch (err: any) {
-        throw this.#contextualizeError(err, inspect(txRequest), inspect(privateExecutionResult));
-      }
-    });
+            return txProvingResult;
+          } catch (err: any) {
+            throw this.#contextualizeError(err, inspect(txRequest), inspect(privateExecutionResult));
+          }
+        },
+        { traceHandle, parentSpanId: phaseSpan?.spanId, phase: 'proving' },
+      );
+      await this.#endPhaseSpanOk(phaseSpan);
+      return result;
+    } catch (err) {
+      await this.#recordPhaseError(traceHandle, phaseSpan, 'proving', err);
+      throw err;
+    }
   }
 
   /**
@@ -820,75 +991,94 @@ export class PXE {
    * @returns A trace of the program execution with gate counts.
    * @throws If the code for the functions executed in this transaction have not been made available via `addContracts`.
    */
-  public profileTx(
+  public async profileTx(
     txRequest: TxExecutionRequest,
-    { profileMode, skipProofGeneration = true, scopes }: ProfileTxOpts,
+    { profileMode, skipProofGeneration = true, scopes, traceHandle }: ProfileTxOpts,
   ): Promise<TxProfileResult> {
-    // We disable concurrent profiles for consistency with simulateTx.
-    return this.#putInJobQueue(async jobId => {
-      const totalTimer = new Timer();
-      try {
-        const txInfo = {
-          origin: txRequest.origin,
-          functionSelector: txRequest.functionSelector,
-          simulatePublic: false,
-          chainId: txRequest.txContext.chainId,
-          version: txRequest.txContext.version,
-          authWitnesses: txRequest.authWitnesses.map(w => w.requestHash),
-        };
-        this.log.info(
-          `Profiling transaction execution request to ${txRequest.functionSelector} at ${txRequest.origin}`,
-          txInfo,
-        );
-        const syncTimer = new Timer();
-        await this.blockStateSynchronizer.sync();
-        const syncTime = syncTimer.ms();
-
-        const contractFunctionSimulator = this.#getSimulatorForTx();
-        const privateExecutionResult = await this.#executePrivate(contractFunctionSimulator, txRequest, scopes, jobId);
-
-        const { executionSteps, timings: { proving } = {} } = await this.#prove(
-          txRequest,
-          this.proofCreator,
-          privateExecutionResult,
-          {
-            simulate: skipProofGeneration,
-            skipFeeEnforcement: false,
-            profileMode,
-          },
-        );
-
-        const totalTime = totalTimer.ms();
-
-        const perFunction = executionSteps.map(({ functionName, timings: { witgen, oracles } }) => {
-          return {
-            functionName,
-            time: witgen,
-            oracles,
-          };
-        });
-
-        // Gate computation is time is not relevant for profiling, so we subtract it from the total time.
-        const gateCountComputationTime =
-          executionSteps.reduce((acc, { timings }) => acc + (timings.gateCount ?? 0), 0) ?? 0;
-
-        const total = totalTime - gateCountComputationTime;
-
-        const timings: ProvingTimings = {
-          total,
-          sync: syncTime,
-          proving,
-          perFunction,
-          unaccounted:
-            total - ((syncTime ?? 0) + (proving ?? 0) + perFunction.reduce((acc, { time }) => acc + time, 0)),
-        };
-
-        const simulatorStats = contractFunctionSimulator.getStats();
-        return new TxProfileResult(executionSteps, { timings, nodeRPCCalls: simulatorStats.nodeRPCCalls });
-      } catch (err: any) {
-        throw this.#contextualizeError(err, inspect(txRequest), `profileMode=${profileMode}`);
-      }
+    const phaseSpan = await this.#startPhaseSpan(traceHandle, 'pxe.profile_tx', 'pxe_execution', 'private', {
+      'aztec.tx.origin': txRequest.origin.toString(),
+      'aztec.tx.function_selector': txRequest.functionSelector.toString(),
     });
+    // We disable concurrent profiles for consistency with simulateTx.
+    try {
+      const result = await this.#putInJobQueue(
+        async jobId => {
+          const totalTimer = new Timer();
+          try {
+            const txInfo = {
+              origin: txRequest.origin,
+              functionSelector: txRequest.functionSelector,
+              simulatePublic: false,
+              chainId: txRequest.txContext.chainId,
+              version: txRequest.txContext.version,
+              authWitnesses: txRequest.authWitnesses.map(w => w.requestHash),
+            };
+            this.log.info(
+              `Profiling transaction execution request to ${txRequest.functionSelector} at ${txRequest.origin}`,
+              txInfo,
+            );
+            const syncTimer = new Timer();
+            await this.blockStateSynchronizer.sync();
+            const syncTime = syncTimer.ms();
+
+            const contractFunctionSimulator = this.#getSimulatorForTx();
+            const privateExecutionResult = await this.#executePrivate(
+              contractFunctionSimulator,
+              txRequest,
+              scopes,
+              jobId,
+            );
+
+            const { executionSteps, timings: { proving } = {} } = await this.#prove(
+              txRequest,
+              this.proofCreator,
+              privateExecutionResult,
+              {
+                simulate: skipProofGeneration,
+                skipFeeEnforcement: false,
+                profileMode,
+              },
+            );
+
+            const totalTime = totalTimer.ms();
+
+            const perFunction = executionSteps.map(({ functionName, timings: { witgen, oracles } }) => {
+              return {
+                functionName,
+                time: witgen,
+                oracles,
+              };
+            });
+
+            // Gate computation is time is not relevant for profiling, so we subtract it from the total time.
+            const gateCountComputationTime =
+              executionSteps.reduce((acc, { timings }) => acc + (timings.gateCount ?? 0), 0) ?? 0;
+
+            const total = totalTime - gateCountComputationTime;
+
+            const timings: ProvingTimings = {
+              total,
+              sync: syncTime,
+              proving,
+              perFunction,
+              unaccounted:
+                total - ((syncTime ?? 0) + (proving ?? 0) + perFunction.reduce((acc, { time }) => acc + time, 0)),
+            };
+
+            const simulatorStats = contractFunctionSimulator.getStats();
+            return new TxProfileResult(executionSteps, { timings, nodeRPCCalls: simulatorStats.nodeRPCCalls });
+          } catch (err: any) {
+            throw this.#contextualizeError(err, inspect(txRequest), `profileMode=${profileMode}`);
+          }
+        },
+        { traceHandle, parentSpanId: phaseSpan?.spanId, phase: 'pxe_execution' },
+      );
+      await this.#endPhaseSpanOk(phaseSpan);
+      return result;
+    } catch (err) {
+      await this.#recordPhaseError(traceHandle, phaseSpan, 'pxe', err);
+      throw err;
+    }
   }
 
   /**
@@ -909,7 +1099,7 @@ export class PXE {
    *
    * TODO(#7456) Prevent msgSender being defined here for the first call
    */
-  public simulateTx(
+  public async simulateTx(
     txRequest: TxExecutionRequest,
     {
       simulatePublic,
@@ -918,212 +1108,259 @@ export class PXE {
       skipKernels = true,
       overrides,
       scopes,
+      traceHandle,
     }: SimulateTxOpts,
   ): Promise<TxSimulationResult> {
+    const phaseSpan = await this.#startPhaseSpan(traceHandle, 'pxe.simulate_tx', 'pxe_execution', 'private', {
+      'aztec.tx.origin': txRequest.origin.toString(),
+      'aztec.tx.function_selector': txRequest.functionSelector.toString(),
+    });
     // We disable concurrent simulations since those might execute oracles which read and write to the PXE stores (e.g.
     // to the capsules), and we need to prevent concurrent runs from interfering with one another (e.g. attempting to
     // delete the same read value, or reading values that another simulation is currently modifying).
-    return this.#putInJobQueue(async jobId => {
-      try {
-        const totalTimer = new Timer();
-        const txInfo = {
-          origin: txRequest.origin,
-          functionSelector: txRequest.functionSelector,
-          simulatePublic,
-          chainId: txRequest.txContext.chainId,
-          version: txRequest.txContext.version,
-          authWitnesses: txRequest.authWitnesses.map(w => w.requestHash),
-        };
-        this.log.info(
-          `Simulating transaction execution request to ${txRequest.functionSelector} at ${txRequest.origin}`,
-          txInfo,
-        );
-        const syncTimer = new Timer();
-        await this.blockStateSynchronizer.sync();
-        const syncTime = syncTimer.ms();
+    try {
+      const result = await this.#putInJobQueue(
+        async jobId => {
+          try {
+            const totalTimer = new Timer();
+            const txInfo = {
+              origin: txRequest.origin,
+              functionSelector: txRequest.functionSelector,
+              simulatePublic,
+              chainId: txRequest.txContext.chainId,
+              version: txRequest.txContext.version,
+              authWitnesses: txRequest.authWitnesses.map(w => w.requestHash),
+            };
+            this.log.info(
+              `Simulating transaction execution request to ${txRequest.functionSelector} at ${txRequest.origin}`,
+              txInfo,
+            );
+            const syncTimer = new Timer();
+            await this.blockStateSynchronizer.sync();
+            const syncTime = syncTimer.ms();
 
-        const overriddenContracts = overrides?.contracts ? new Set(Object.keys(overrides.contracts)) : undefined;
-        const hasOverriddenContracts = overriddenContracts !== undefined && overriddenContracts.size > 0;
+            const overriddenContracts = overrides?.contracts ? new Set(Object.keys(overrides.contracts)) : undefined;
+            const hasOverriddenContracts = overriddenContracts !== undefined && overriddenContracts.size > 0;
 
-        if (hasOverriddenContracts && !skipKernels) {
-          throw new Error(
-            'Simulating with overridden contracts is not compatible with kernel execution. Please set skipKernels to true when simulating with overridden contracts.',
-          );
-        }
-        const contractFunctionSimulator = this.#getSimulatorForTx(overrides);
+            if (hasOverriddenContracts && !skipKernels) {
+              throw new Error(
+                'Simulating with overridden contracts is not compatible with kernel execution. Please set skipKernels to true when simulating with overridden contracts.',
+              );
+            }
+            const contractFunctionSimulator = this.#getSimulatorForTx(overrides);
 
-        if (hasOverriddenContracts) {
-          // Overridden contracts don't have a sync function, so calling sync on them would fail.
-          // We exclude them so the sync service skips them entirely.
-          this.contractSyncService.setExcludedFromSync(jobId, overriddenContracts);
-        }
+            if (hasOverriddenContracts) {
+              // Overridden contracts don't have a sync function, so calling sync on them would fail.
+              // We exclude them so the sync service skips them entirely.
+              this.contractSyncService.setExcludedFromSync(jobId, overriddenContracts);
+            }
 
-        // Execution of private functions only; no proving, and no kernel logic.
-        const privateExecutionResult = await this.#executePrivate(contractFunctionSimulator, txRequest, scopes, jobId);
+            // Execution of private functions only; no proving, and no kernel logic.
+            const privateExecutionResult = await this.#executePrivate(
+              contractFunctionSimulator,
+              txRequest,
+              scopes,
+              jobId,
+            );
 
-        let publicInputs: PrivateKernelTailCircuitPublicInputs | undefined;
-        let executionSteps: PrivateExecutionStep[] = [];
+            let publicInputs: PrivateKernelTailCircuitPublicInputs | undefined;
+            let executionSteps: PrivateExecutionStep[] = [];
 
-        if (skipKernels) {
-          ({ publicInputs, executionSteps } = await generateSimulatedProvingResult(
-            privateExecutionResult,
-            (addr, sel) => this.contractStore.getDebugFunctionName(addr, sel),
-            this.node,
-          ));
-        } else {
-          // Kernel logic, plus proving of all private functions and kernels.
-          ({ publicInputs, executionSteps } = await this.#prove(txRequest, this.proofCreator, privateExecutionResult, {
-            simulate: true,
-            skipFeeEnforcement,
-            profileMode: 'none',
-          }));
-        }
+            if (skipKernels) {
+              ({ publicInputs, executionSteps } = await generateSimulatedProvingResult(
+                privateExecutionResult,
+                (addr, sel) => this.contractStore.getDebugFunctionName(addr, sel),
+                this.node,
+              ));
+            } else {
+              // Kernel logic, plus proving of all private functions and kernels.
+              ({ publicInputs, executionSteps } = await this.#prove(
+                txRequest,
+                this.proofCreator,
+                privateExecutionResult,
+                {
+                  simulate: true,
+                  skipFeeEnforcement,
+                  profileMode: 'none',
+                },
+              ));
+            }
 
-        const privateSimulationResult = new PrivateSimulationResult(privateExecutionResult, publicInputs);
-        const simulatedTx = await privateSimulationResult.toSimulatedTx();
-        let publicSimulationTime: number | undefined;
-        let publicOutput: PublicSimulationOutput | undefined;
-        if (simulatePublic && publicInputs.forPublic) {
-          const publicSimulationTimer = new Timer();
-          publicOutput = await this.#simulatePublicCalls(simulatedTx, skipFeeEnforcement);
-          publicSimulationTime = publicSimulationTimer.ms();
-          if (publicOutput?.debugLogs?.length) {
-            await displayDebugLogs(publicOutput.debugLogs, addr => this.contractStore.getDebugContractName(addr));
-          }
-        }
-
-        let validationTime: number | undefined;
-        if (!skipTxValidation) {
-          const validationTimer = new Timer();
-          const validationResult = await this.node.isValidTx(simulatedTx, { isSimulation: true, skipFeeEnforcement });
-          validationTime = validationTimer.ms();
-          if (validationResult.result === 'invalid') {
-            const reason = validationResult.reason.length > 0 ? ` Reason: ${validationResult.reason.join(', ')}` : '';
-            throw new Error(`The simulated transaction is unable to be added to state and is invalid.${reason}`);
-          }
-        }
-
-        const txHash = simulatedTx.getTxHash();
-
-        const totalTime = totalTimer.ms();
-
-        const perFunction = executionSteps.map(({ functionName, timings: { witgen, oracles } }) => ({
-          functionName,
-          time: witgen,
-          oracles,
-        }));
-
-        const timings: SimulationTimings = {
-          total: totalTime,
-          sync: syncTime,
-          publicSimulation: publicSimulationTime,
-          validation: validationTime,
-          perFunction,
-          unaccounted:
-            totalTime -
-            (syncTime +
-              (publicSimulationTime ?? 0) +
-              (validationTime ?? 0) +
-              perFunction.reduce((acc, { time }) => acc + time, 0)),
-        };
-
-        this.log.info(`Simulation completed for ${txHash.toString()} in ${totalTime}ms`, {
-          txHash,
-          ...txInfo,
-          ...(publicOutput
-            ? {
-                gasUsed: publicOutput.gasUsed,
-                revertCode: publicOutput.txEffect.revertCode.getCode(),
-                revertReason: publicOutput.revertReason,
+            const privateSimulationResult = new PrivateSimulationResult(privateExecutionResult, publicInputs);
+            const simulatedTx = await privateSimulationResult.toSimulatedTx();
+            let publicSimulationTime: number | undefined;
+            let publicOutput: PublicSimulationOutput | undefined;
+            if (simulatePublic && publicInputs.forPublic) {
+              const publicSimulationTimer = new Timer();
+              publicOutput = await this.#simulatePublicCalls(simulatedTx, skipFeeEnforcement);
+              publicSimulationTime = publicSimulationTimer.ms();
+              if (publicOutput?.debugLogs?.length) {
+                await displayDebugLogs(publicOutput.debugLogs, addr => this.contractStore.getDebugContractName(addr));
               }
-            : {}),
-        });
+            }
 
-        const simulatorStats = contractFunctionSimulator.getStats();
-        return TxSimulationResult.fromPrivateSimulationResultAndPublicOutput(privateSimulationResult, publicOutput, {
-          timings,
-          nodeRPCCalls: simulatorStats.nodeRPCCalls,
-        });
-      } catch (err: any) {
-        throw this.#contextualizeError(
-          err,
-          inspect(txRequest),
-          `simulatePublic=${simulatePublic}`,
-          `skipTxValidation=${skipTxValidation}`,
-          `scopes=${scopes.map(s => s.toString()).join(', ')}`,
-        );
-      }
-    });
+            let validationTime: number | undefined;
+            if (!skipTxValidation) {
+              const validationTimer = new Timer();
+              const validationResult = await this.node.isValidTx(simulatedTx, {
+                isSimulation: true,
+                skipFeeEnforcement,
+              });
+              validationTime = validationTimer.ms();
+              if (validationResult.result === 'invalid') {
+                const reason =
+                  validationResult.reason.length > 0 ? ` Reason: ${validationResult.reason.join(', ')}` : '';
+                throw new Error(`The simulated transaction is unable to be added to state and is invalid.${reason}`);
+              }
+            }
+
+            const txHash = simulatedTx.getTxHash();
+
+            const totalTime = totalTimer.ms();
+
+            const perFunction = executionSteps.map(({ functionName, timings: { witgen, oracles } }) => ({
+              functionName,
+              time: witgen,
+              oracles,
+            }));
+
+            const timings: SimulationTimings = {
+              total: totalTime,
+              sync: syncTime,
+              publicSimulation: publicSimulationTime,
+              validation: validationTime,
+              perFunction,
+              unaccounted:
+                totalTime -
+                (syncTime +
+                  (publicSimulationTime ?? 0) +
+                  (validationTime ?? 0) +
+                  perFunction.reduce((acc, { time }) => acc + time, 0)),
+            };
+
+            this.log.info(`Simulation completed for ${txHash.toString()} in ${totalTime}ms`, {
+              txHash,
+              ...txInfo,
+              ...(publicOutput
+                ? {
+                    gasUsed: publicOutput.gasUsed,
+                    revertCode: publicOutput.txEffect.revertCode.getCode(),
+                    revertReason: publicOutput.revertReason,
+                  }
+                : {}),
+            });
+
+            const simulatorStats = contractFunctionSimulator.getStats();
+            return TxSimulationResult.fromPrivateSimulationResultAndPublicOutput(
+              privateSimulationResult,
+              publicOutput,
+              {
+                timings,
+                nodeRPCCalls: simulatorStats.nodeRPCCalls,
+              },
+            );
+          } catch (err: any) {
+            throw this.#contextualizeError(
+              err,
+              inspect(txRequest),
+              `simulatePublic=${simulatePublic}`,
+              `skipTxValidation=${skipTxValidation}`,
+              `scopes=${scopes.map(s => s.toString()).join(', ')}`,
+            );
+          }
+        },
+        { traceHandle, parentSpanId: phaseSpan?.spanId, phase: 'pxe_execution' },
+      );
+      await this.#endPhaseSpanOk(phaseSpan);
+      return result;
+    } catch (err) {
+      await this.#recordPhaseError(traceHandle, phaseSpan, 'pxe', err);
+      throw err;
+    }
   }
 
   /**
    * Executes a contract utility function.
    * @param call - The function call containing the function details, arguments, and target contract address.
    */
-  public executeUtility(
+  public async executeUtility(
     call: FunctionCall,
-    { authwits, scopes }: ExecuteUtilityOpts = { scopes: [] },
+    { authwits, scopes, traceHandle }: ExecuteUtilityOpts = { scopes: [] },
   ): Promise<UtilityExecutionResult> {
+    const phaseSpan = await this.#startPhaseSpan(traceHandle, 'pxe.execute_utility', 'pxe_execution', 'utility', {
+      'aztec.utility.target': call.to.toString(),
+      'aztec.utility.function_selector': call.selector.toString(),
+    });
     // We disable concurrent executions since those might execute oracles which read and write to the PXE stores (e.g.
     // to the capsules), and we need to prevent concurrent runs from interfering with one another (e.g. attempting to
     // delete the same read value, or reading values that another execution is currently modifying).
-    return this.#putInJobQueue(async jobId => {
-      try {
-        const totalTimer = new Timer();
-        const syncTimer = new Timer();
-        await this.blockStateSynchronizer.sync();
-        const syncTime = syncTimer.ms();
-        const functionTimer = new Timer();
-        const contractFunctionSimulator = this.#getSimulatorForTx();
+    try {
+      const result = await this.#putInJobQueue(
+        async jobId => {
+          try {
+            const totalTimer = new Timer();
+            const syncTimer = new Timer();
+            await this.blockStateSynchronizer.sync();
+            const syncTime = syncTimer.ms();
+            const functionTimer = new Timer();
+            const contractFunctionSimulator = this.#getSimulatorForTx();
 
-        const anchorBlockHeader = await this.anchorBlockStore.getBlockHeader();
-        await this.contractSyncService.ensureContractSynced(
-          call.to,
-          call.selector,
-          (privateSyncCall, execScopes) =>
-            this.#executeUtility(contractFunctionSimulator, privateSyncCall, [], execScopes, jobId),
-          anchorBlockHeader,
-          jobId,
-          scopes,
-        );
+            const anchorBlockHeader = await this.anchorBlockStore.getBlockHeader();
+            await this.contractSyncService.ensureContractSynced(
+              call.to,
+              call.selector,
+              (privateSyncCall, execScopes) =>
+                this.#executeUtility(contractFunctionSimulator, privateSyncCall, [], execScopes, jobId),
+              anchorBlockHeader,
+              jobId,
+              scopes,
+            );
 
-        const { result: executionResult, offchainEffects } = await this.#executeUtility(
-          contractFunctionSimulator,
-          call,
-          authwits ?? [],
-          scopes,
-          jobId,
-        );
-        const functionTime = functionTimer.ms();
+            const { result: executionResult, offchainEffects } = await this.#executeUtility(
+              contractFunctionSimulator,
+              call,
+              authwits ?? [],
+              scopes,
+              jobId,
+            );
+            const functionTime = functionTimer.ms();
 
-        const totalTime = totalTimer.ms();
+            const totalTime = totalTimer.ms();
 
-        const perFunction = [{ functionName: call.name, time: functionTime }];
+            const perFunction = [{ functionName: call.name, time: functionTime }];
 
-        const timings: SimulationTimings = {
-          total: totalTime,
-          sync: syncTime,
-          perFunction,
-          unaccounted: totalTime - (syncTime + perFunction.reduce((acc, { time }) => acc + time, 0)),
-        };
+            const timings: SimulationTimings = {
+              total: totalTime,
+              sync: syncTime,
+              perFunction,
+              unaccounted: totalTime - (syncTime + perFunction.reduce((acc, { time }) => acc + time, 0)),
+            };
 
-        const simulationStats = contractFunctionSimulator.getStats();
-        return {
-          result: executionResult,
-          offchainEffects,
-          anchorBlockTimestamp: anchorBlockHeader.globalVariables.timestamp,
-          stats: { timings, nodeRPCCalls: simulationStats.nodeRPCCalls },
-        };
-      } catch (err: any) {
-        const { to, name, args } = call;
-        const stringifiedArgs = args.map(arg => arg.toString()).join(', ');
-        throw this.#contextualizeError(
-          err,
-          `executeUtility ${to}:${name}(${stringifiedArgs})`,
-          `scopes=${scopes.map(s => s.toString()).join(', ')}`,
-        );
-      }
-    });
+            const simulationStats = contractFunctionSimulator.getStats();
+            return {
+              result: executionResult,
+              offchainEffects,
+              anchorBlockTimestamp: anchorBlockHeader.globalVariables.timestamp,
+              stats: { timings, nodeRPCCalls: simulationStats.nodeRPCCalls },
+            };
+          } catch (err: any) {
+            const { to, name, args } = call;
+            const stringifiedArgs = args.map(arg => arg.toString()).join(', ');
+            throw this.#contextualizeError(
+              err,
+              `executeUtility ${to}:${name}(${stringifiedArgs})`,
+              `scopes=${scopes.map(s => s.toString()).join(', ')}`,
+            );
+          }
+        },
+        { traceHandle, parentSpanId: phaseSpan?.spanId, phase: 'pxe_execution' },
+      );
+      await this.#endPhaseSpanOk(phaseSpan);
+      return result;
+    } catch (err) {
+      await this.#recordPhaseError(traceHandle, phaseSpan, 'pxe', err);
+      throw err;
+    }
   }
 
   /**

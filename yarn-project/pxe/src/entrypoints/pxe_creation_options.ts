@@ -1,4 +1,5 @@
 import type { BBPrivateKernelProverOptions } from '@aztec/bb-prover/client';
+import type { TraceRecorder } from '@aztec/debugger';
 import type { Logger } from '@aztec/foundation/log';
 import type { AztecAsyncKVStore } from '@aztec/kv-store';
 import type { CircuitSimulator } from '@aztec/simulator/client';
@@ -11,6 +12,8 @@ export type PXECreationOptions = {
   proverOrOptions?: PrivateKernelProver | BBPrivateKernelProverOptions;
   store?: AztecAsyncKVStore;
   simulator?: CircuitSimulator;
+  /** Optional debugger trace recorder. Defaults to a no-op recorder. */
+  traceRecorder?: TraceRecorder;
 };
 
 /** Checks if the given value implements the PrivateKernelProver interface via duck-typing. */
