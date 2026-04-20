@@ -20,9 +20,10 @@
     "start": "node --no-warnings ./dest/bin",
     "start:debug": "node --inspect=0.0.0.0:9221 --no-warnings ./dest/bin",
     "dev": "LOG_LEVEL=debug && node ./dest/bin",
-    "build": "yarn clean && ../scripts/tsc.sh",
+    "build": "yarn clean && yarn generate && ../scripts/tsc.sh",
     "build:dev": "../scripts/tsc.sh --watch",
     "clean": "rm -rf ./dest .tsbuildinfo",
+    "generate": "yarn workspace @aztec/accounts generate && yarn workspace @aztec/cli generate && yarn workspace @aztec/slasher generate",
     "test": "NODE_NO_WARNINGS=1 node --experimental-vm-modules ../node_modules/.bin/jest --passWithNoTests --maxWorkers=${JEST_MAX_WORKERS:-8}"
   },
   "inherits": [
@@ -71,6 +72,7 @@
     "@aztec/aztec.js": "workspace:^",
     "@aztec/bb.js": "workspace:^",
     "@aztec/cli": "workspace:^",
+    "@aztec/debugger": "workspace:^",
     "@aztec/entrypoints": "workspace:^",
     "@aztec/ethereum": "workspace:^",
     "@aztec/foundation": "workspace:^",

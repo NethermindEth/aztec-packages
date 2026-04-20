@@ -16,6 +16,9 @@
       "path": "../cli"
     },
     {
+      "path": "../debugger"
+    },
+    {
       "path": "../entrypoints"
     },
     {

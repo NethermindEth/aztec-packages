@@ -12,6 +12,7 @@ import {
 import type { AztecNode } from '@aztec/aztec.js/node';
 import { AccountManager, type Aliased, type SimulateOptions } from '@aztec/aztec.js/wallet';
 import { TxSimulationResultWithAppOffset } from '@aztec/aztec.js/wallet';
+import type { TraceRecorder } from '@aztec/debugger';
 import type { DefaultAccountEntrypointOptions } from '@aztec/entrypoints/account';
 import { DefaultEntrypoint } from '@aztec/entrypoints/default';
 import { Fr } from '@aztec/foundation/curves/bn254';
@@ -50,10 +51,16 @@ export class CLIWallet extends BaseWallet {
     log: LogFn,
     db?: WalletDB,
     overridePXEConfig?: Partial<PXEConfig>,
+    traceRecorder?: TraceRecorder,
   ): Promise<CLIWallet> {
     const pxeConfig = Object.assign(getPXEConfig(), overridePXEConfig);
-    const pxe = await createPXE(node, pxeConfig);
+    const pxe = await createPXE(node, pxeConfig, traceRecorder ? { traceRecorder } : undefined);
     return new CLIWallet(pxe, node, log, db);
+  }
+
+  /** Local-only passthrough to `pxe.debug`. Not exposed on the `Wallet` interface. */
+  public get debug(): PXE['debug'] {
+    return this.pxe.debug;
   }
 
   override async getAccounts(): Promise<Aliased<AztecAddress>[]> {
