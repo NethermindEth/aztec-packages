@@ -1,6 +1,7 @@
 import { randomBytes } from '@aztec/foundation/crypto/random';
 import {
   AZTEC_TRACE_SCHEMA_VERSION,
+  type AztecCallFrame,
   type AztecSpan,
   type AztecSpanEvent,
   type AztecTrace,
@@ -9,7 +10,7 @@ import {
   type RedactionManifest,
 } from '@aztec/stdlib/debug';
 
-import type { TraceRetentionConfig } from '../recorder/kv_recorder.js';
+import { type TraceRetentionConfig, resolveTraceRetention } from '../recorder/kv_recorder.js';
 import type {
   EndSpanInput,
   SpanHandle,
@@ -42,19 +43,10 @@ export class InMemoryTraceRecorder implements TraceRecorder {
   private readonly txIndex = new Map<string, string>();
   private readonly provisionalIndex = new Map<string, string>();
 
-  constructor(private readonly retention: TraceRetentionConfig) {
-    if (retention.maxTraces <= 0) {
-      throw new Error('maxTraces must be positive');
-    }
-    if (retention.maxSpansPerTrace <= 0) {
-      throw new Error('maxSpansPerTrace must be positive');
-    }
-    if (retention.maxEventsPerSpan <= 0) {
-      throw new Error('maxEventsPerSpan must be positive');
-    }
-    if (retention.maxErrorsPerTrace <= 0) {
-      throw new Error('maxErrorsPerTrace must be positive');
-    }
+  private readonly retention: ReturnType<typeof resolveTraceRetention>;
+
+  constructor(retention: TraceRetentionConfig) {
+    this.retention = resolveTraceRetention(retention);
   }
 
   startTrace(input: StartTraceInput): Promise<TraceHandle> {
@@ -176,6 +168,20 @@ export class InMemoryTraceRecorder implements TraceRecorder {
         stored.errors.push(error);
       }
     }
+    return Promise.resolve();
+  }
+
+  appendCallFrames(trace: TraceHandle, frames: AztecCallFrame[]): Promise<void> {
+    const stored = this.traces.get(trace.traceId);
+    if (!stored) {
+      return Promise.resolve();
+    }
+    const remaining = this.retention.maxCallFramesPerTrace - stored.callFrames.length;
+    if (remaining <= 0) {
+      return Promise.resolve();
+    }
+    const toAppend = frames.length <= remaining ? frames : frames.slice(0, remaining);
+    stored.callFrames.push(...toAppend);
     return Promise.resolve();
   }
 

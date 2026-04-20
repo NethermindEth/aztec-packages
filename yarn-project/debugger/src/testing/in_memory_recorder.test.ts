@@ -168,6 +168,44 @@ describe('InMemoryTraceRecorder', () => {
     expect(await recorder.getTrace('0xabc')).toBeUndefined();
   });
 
+  it('rejects a non-positive maxCallFramesPerTrace', () => {
+    expect(() => new InMemoryTraceRecorder({ ...retention, maxCallFramesPerTrace: 0 })).toThrow();
+    expect(() => new InMemoryTraceRecorder({ ...retention, maxCallFramesPerTrace: -1 })).toThrow();
+  });
+
+  it('appendCallFrames defaults its cap to maxSpansPerTrace', async () => {
+    const trace = await recorder.startTrace({ network: { chainId: 1 } });
+    await recorder.appendCallFrames(trace, [
+      { callFrameId: 'f1', kind: 'private', sensitivity: 'secret_local' },
+      { callFrameId: 'f2', kind: 'private', sensitivity: 'secret_local' },
+      { callFrameId: 'f3', kind: 'private', sensitivity: 'secret_local' },
+    ]);
+    const stored = await recorder.getTrace(trace.traceId);
+    expect(stored?.callFrames.length).toBe(retention.maxSpansPerTrace);
+    expect(stored?.callFrames[0].callFrameId).toBe('f1');
+    expect(stored?.callFrames[1].callFrameId).toBe('f2');
+  });
+
+  it('appendCallFrames honors an explicit maxCallFramesPerTrace', async () => {
+    const r = new InMemoryTraceRecorder({ ...retention, maxCallFramesPerTrace: 1 });
+    const trace = await r.startTrace({ network: { chainId: 1 } });
+    await r.appendCallFrames(trace, [
+      { callFrameId: 'f1', kind: 'private', sensitivity: 'secret_local' },
+      { callFrameId: 'f2', kind: 'private', sensitivity: 'secret_local' },
+    ]);
+    const stored = await r.getTrace(trace.traceId);
+    expect(stored?.callFrames.length).toBe(1);
+    expect(stored?.callFrames[0].callFrameId).toBe('f1');
+  });
+
+  it('appendCallFrames on an unknown trace is a no-op', async () => {
+    await expect(
+      recorder.appendCallFrames({ traceId: 'unknown', provisionalTraceId: 'unknown' }, [
+        { callFrameId: 'f1', kind: 'private', sensitivity: 'secret_local' },
+      ]),
+    ).resolves.toBeUndefined();
+  });
+
   it('stored traces survive JSON round-trip through AztecTraceSchema', async () => {
     const handle = await recorder.startTrace({ network: { chainId: 1 } });
     await recorder.startSpan(handle, {

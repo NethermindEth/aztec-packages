@@ -1,4 +1,4 @@
-import type { AztecSpanEvent, AztecTraceError } from '@aztec/stdlib/debug';
+import type { AztecCallFrame, AztecSpanEvent, AztecTraceError } from '@aztec/stdlib/debug';
 
 import type {
   EndSpanInput,
@@ -32,6 +32,10 @@ export class NoopTraceRecorder implements TraceRecorder {
   }
 
   recordError(_trace: TraceHandle, _error: AztecTraceError): Promise<void> {
+    return Promise.resolve();
+  }
+
+  appendCallFrames(_trace: TraceHandle, _frames: AztecCallFrame[]): Promise<void> {
     return Promise.resolve();
   }
 

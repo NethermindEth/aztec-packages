@@ -1,5 +1,6 @@
 import type {
   AztecAttributeValue,
+  AztecCallFrame,
   AztecSpan,
   AztecSpanEvent,
   AztecSpanStatus,
@@ -69,6 +70,9 @@ export interface TraceRecorder {
 
   /** Records an error against a trace. */
   recordError(trace: TraceHandle, error: AztecTraceError): Promise<void>;
+
+  /** Appends immutable call frames to an existing trace. No-op on unknown trace. */
+  appendCallFrames(trace: TraceHandle, frames: AztecCallFrame[]): Promise<void>;
 
   /** Binds a final tx hash to a trace originally identified by a provisional id. No-op if unknown. */
   bindTxHash(provisionalTraceId: string, txHash: string): Promise<void>;

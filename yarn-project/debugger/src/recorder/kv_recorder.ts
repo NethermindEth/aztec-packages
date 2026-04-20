@@ -2,6 +2,7 @@ import { randomBytes } from '@aztec/foundation/crypto/random';
 import type { AztecAsyncKVStore, AztecAsyncMap, AztecAsyncSingleton } from '@aztec/kv-store';
 import {
   AZTEC_TRACE_SCHEMA_VERSION,
+  type AztecCallFrame,
   type AztecSpan,
   type AztecSpanEvent,
   type AztecTrace,
@@ -25,7 +26,43 @@ export type TraceRetentionConfig = Readonly<{
   maxSpansPerTrace: number;
   maxEventsPerSpan: number;
   maxErrorsPerTrace: number;
+  maxCallFramesPerTrace?: number;
 }>;
+
+/** Resolved retention with defaults applied. */
+type ResolvedTraceRetention = Readonly<{
+  maxTraces: number;
+  maxSpansPerTrace: number;
+  maxEventsPerSpan: number;
+  maxErrorsPerTrace: number;
+  maxCallFramesPerTrace: number;
+}>;
+
+export function resolveTraceRetention(retention: TraceRetentionConfig): ResolvedTraceRetention {
+  if (retention.maxTraces <= 0) {
+    throw new Error('maxTraces must be positive');
+  }
+  if (retention.maxSpansPerTrace <= 0) {
+    throw new Error('maxSpansPerTrace must be positive');
+  }
+  if (retention.maxEventsPerSpan <= 0) {
+    throw new Error('maxEventsPerSpan must be positive');
+  }
+  if (retention.maxErrorsPerTrace <= 0) {
+    throw new Error('maxErrorsPerTrace must be positive');
+  }
+  const maxCallFramesPerTrace = retention.maxCallFramesPerTrace ?? retention.maxSpansPerTrace;
+  if (!Number.isInteger(maxCallFramesPerTrace) || maxCallFramesPerTrace <= 0) {
+    throw new Error('maxCallFramesPerTrace must be a positive integer');
+  }
+  return {
+    maxTraces: retention.maxTraces,
+    maxSpansPerTrace: retention.maxSpansPerTrace,
+    maxEventsPerSpan: retention.maxEventsPerSpan,
+    maxErrorsPerTrace: retention.maxErrorsPerTrace,
+    maxCallFramesPerTrace,
+  };
+}
 
 type RetentionCursor = {
   /** Smallest sequence number currently present (inclusive). */
@@ -79,22 +116,13 @@ export class KvTraceRecorder implements TraceRecorder {
   private readonly order: AztecAsyncMap<number, string>;
   private readonly cursor: AztecAsyncSingleton<RetentionCursor>;
 
+  private readonly retention: ResolvedTraceRetention;
+
   constructor(
     private readonly store: AztecAsyncKVStore,
-    private readonly retention: TraceRetentionConfig,
+    retention: TraceRetentionConfig,
   ) {
-    if (retention.maxTraces <= 0) {
-      throw new Error('maxTraces must be positive');
-    }
-    if (retention.maxSpansPerTrace <= 0) {
-      throw new Error('maxSpansPerTrace must be positive');
-    }
-    if (retention.maxEventsPerSpan <= 0) {
-      throw new Error('maxEventsPerSpan must be positive');
-    }
-    if (retention.maxErrorsPerTrace <= 0) {
-      throw new Error('maxErrorsPerTrace must be positive');
-    }
+    this.retention = resolveTraceRetention(retention);
 
     this.traces = store.openMap<string, AztecTrace>(MAP_TRACES);
     this.txIndex = store.openMap<string, string>(MAP_TX_INDEX);
@@ -260,6 +288,22 @@ export class KvTraceRecorder implements TraceRecorder {
         return;
       }
       stored.errors.push(error);
+      await this.traces.set(trace.traceId, stored);
+    });
+  }
+
+  appendCallFrames(trace: TraceHandle, frames: AztecCallFrame[]): Promise<void> {
+    return this.store.transactionAsync(async () => {
+      const stored = await this.traces.getAsync(trace.traceId);
+      if (!stored) {
+        return;
+      }
+      const remaining = this.retention.maxCallFramesPerTrace - stored.callFrames.length;
+      if (remaining <= 0) {
+        return;
+      }
+      const toAppend = frames.length <= remaining ? frames : frames.slice(0, remaining);
+      stored.callFrames.push(...toAppend);
       await this.traces.set(trace.traceId, stored);
     });
   }
