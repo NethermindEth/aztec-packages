@@ -363,12 +363,12 @@ const EventFilterBaseSchema = z.object({
   afterLog: optional(LogId.schema),
 });
 
-export const PrivateEventFilterSchema = EventFilterBaseSchema.extend({
+export const PrivateEventFilterSchema: z.ZodType<any> = EventFilterBaseSchema.extend({
   contractAddress: schemas.AztecAddress,
   scopes: z.array(schemas.AztecAddress),
 });
 
-export const PublicEventFilterSchema = EventFilterBaseSchema.extend({
+export const PublicEventFilterSchema: z.ZodType<any> = EventFilterBaseSchema.extend({
   contractAddress: optional(schemas.AztecAddress),
 });
 
@@ -379,7 +379,7 @@ export const PrivateEventSchema: z.ZodType<any> = zodFor<PrivateEvent<AbiDecoded
   }),
 );
 
-export const PublicEventSchema = zodFor<PublicEvent<AbiDecoded>>()(
+export const PublicEventSchema: z.ZodType<any> = zodFor<PublicEvent<AbiDecoded>>()(
   z.object({
     event: AbiDecodedSchema,
     metadata: z.intersection(inTxSchema(), z.object({ contractAddress: schemas.AztecAddress })),
