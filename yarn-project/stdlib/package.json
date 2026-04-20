@@ -64,7 +64,8 @@
     "./l1-contracts": "./dest/l1-contracts/index.js",
     "./world-state": "./dest/world-state/index.js",
     "./timetable": "./dest/timetable/index.js",
-    "./kv-store": "./dest/kv-store/index.js"
+    "./kv-store": "./dest/kv-store/index.js",
+    "./debug": "./dest/debug/index.js"
   },
   "typedocOptions": {
     "entryPoints": [
