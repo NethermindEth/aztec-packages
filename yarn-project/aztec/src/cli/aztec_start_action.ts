@@ -49,7 +49,10 @@ export async function aztecStart(options: any, userLog: LogFn, debugLogger: Logg
     // Start Node and PXE JSON-RPC server
     signalHandlers.push(stop);
     services.node = [node, AztecNodeApiSchema];
-    adminServices.node = [node, AztecNodeAdminApiSchema];
+    // Admin methods are registered under the `nodeAdmin` namespace to match
+    // `createAztecNodeAdminClient`, keeping local-network startup consistent
+    // with the production `aztec start --node` path.
+    adminServices.nodeAdmin = [node, AztecNodeAdminApiSchema];
     services.nodeDebug = [node, AztecNodeDebugApiSchema];
   } else {
     // Route --prover-node through startNode
