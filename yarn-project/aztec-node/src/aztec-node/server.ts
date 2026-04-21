@@ -4,6 +4,7 @@ import { TestCircuitVerifier } from '@aztec/bb-prover/test';
 import { type BlobClientInterface, createBlobClientWithFileStores } from '@aztec/blob-client/client';
 import { Blob } from '@aztec/blob-lib';
 import { ARCHIVE_HEIGHT, type L1_TO_L2_MSG_TREE_HEIGHT, type NOTE_HASH_TREE_HEIGHT } from '@aztec/constants';
+import { buildNodeTraceSegment, mapTxStatusToLifecycleState } from '@aztec/debugger/node';
 import { EpochCache, type EpochCacheInterface } from '@aztec/epoch-cache';
 import { createEthereumChain } from '@aztec/ethereum/chain';
 import { getPublicClient, makeL1HttpTransport } from '@aztec/ethereum/client';
@@ -65,6 +66,13 @@ import type {
   NodeInfo,
   ProtocolContractAddresses,
 } from '@aztec/stdlib/contract';
+import {
+  NODE_TRACE_SEGMENT_REQUEST_SCHEMA_VERSION,
+  NODE_TRACE_STATUS_SCHEMA_VERSION,
+  type NodeTraceSegment,
+  type NodeTraceSegmentRequest,
+  type NodeTraceStatus,
+} from '@aztec/stdlib/debug';
 import { GasFees, type ManaUsageEstimate } from '@aztec/stdlib/gas';
 import { computePublicDataTreeLeafSlot } from '@aztec/stdlib/hash';
 import {
@@ -98,7 +106,7 @@ import {
   type IndexedTxEffect,
   PublicSimulationOutput,
   Tx,
-  type TxHash,
+  TxHash,
   TxReceipt,
   TxStatus,
   type TxValidationResult,
@@ -130,7 +138,13 @@ import { createPublicClient } from 'viem';
 import { createSentinel } from '../sentinel/factory.js';
 import { Sentinel } from '../sentinel/sentinel.js';
 import { type AztecNodeConfig, createKeyStoreForValidator } from './config.js';
+import {
+  createDebuggerSpanProjector,
+  makeSpanRecord,
+  type DebuggerSpanProjector,
+} from './debugger_span_projector.js';
 import { NodeMetrics } from './node_metrics.js';
+import { BoundedTxMetadataCache } from './tx_metadata_cache.js';
 
 /**
  * The aztec node.
@@ -141,6 +155,10 @@ export class AztecNodeService implements AztecNode, AztecNodeAdmin, AztecNodeDeb
 
   // Prevent two snapshot operations to happen simultaneously
   private isUploadingSnapshot = false;
+
+  /** Bounded in-process cache of public-call metadata for admin-only trace export. */
+  private readonly txMetadataCache = new BoundedTxMetadataCache(64);
+  private readonly debuggerSpanProjector: DebuggerSpanProjector = createDebuggerSpanProjector();
 
   public readonly tracer: Tracer;
 
@@ -914,22 +932,38 @@ export class AztecNodeService implements AztecNode, AztecNodeAdmin, AztecNodeDeb
     await this.#sendTx(tx);
   }
 
+  @trackSpan('AztecNodeService.sendTx', (tx: Tx) => ({
+    [Attributes.TX_HASH]: tx.getTxHash().toString(),
+  }))
   async #sendTx(tx: Tx) {
     const timer = new Timer();
     const txHash = tx.getTxHash().toString();
+    const startedAt = new Date().toISOString();
 
-    const valid = await this.isValidTx(tx);
-    if (valid.result !== 'valid') {
-      const reason = valid.reason.join(', ');
-      this.metrics.receivedTx(timer.ms(), false);
-      this.log.warn(`Received invalid tx ${txHash}: ${reason}`, { txHash });
-      throw new Error(`Invalid tx: ${reason}`);
+    try {
+      const valid = await this.isValidTx(tx);
+      if (valid.result !== 'valid') {
+        const reason = valid.reason.join(', ');
+        this.metrics.receivedTx(timer.ms(), false);
+        this.log.warn(`Received invalid tx ${txHash}: ${reason}`, { txHash });
+        throw new Error(`Invalid tx: ${reason}`);
+      }
+
+      await this.p2pClient!.sendTx(tx);
+      const duration = timer.ms();
+      this.metrics.receivedTx(duration, true);
+      this.log.info(`Received tx ${txHash} in ${duration}ms`, { txHash });
+      this.recordNodeDebuggerSpan(txHash, 'AztecNodeService.sendTx', startedAt, 'ok', {
+        txAccepted: true,
+        durationMs: duration,
+      });
+    } catch (error) {
+      this.recordNodeDebuggerSpan(txHash, 'AztecNodeService.sendTx', startedAt, 'error', {
+        txAccepted: false,
+        errorMessage: String(error),
+      });
+      throw error;
     }
-
-    await this.p2pClient!.sendTx(tx);
-    const duration = timer.ms();
-    this.metrics.receivedTx(duration, true);
-    this.log.info(`Received tx ${txHash} in ${duration}ms`, { txHash });
   }
 
   public async getTxReceipt(txHash: TxHash): Promise<TxReceipt> {
@@ -968,6 +1002,8 @@ export class AztecNodeService implements AztecNode, AztecNodeAdmin, AztecNodeDeb
    */
   public async stop() {
     this.log.info(`Stopping Aztec Node`);
+    this.txMetadataCache.clear();
+    this.debuggerSpanProjector.clear();
     await tryStop(this.validatorsSentinel);
     await tryStop(this.epochPruneWatcher);
     await tryStop(this.slasherClient);
@@ -1339,7 +1375,9 @@ export class AztecNodeService implements AztecNode, AztecNodeAdmin, AztecNodeDeb
       const processor = publicProcessorFactory.create(merkleTreeFork, newGlobalVariables, config);
 
       // REFACTOR: Consider merging ProcessReturnValues into ProcessedTx
-      const [processedTxs, failedTxs, _usedTxs, returns, debugLogs] = await processor.process([tx]);
+      const [processedTxs, failedTxs, _usedTxs, returns, debugLogs, callStackMetadataPerTx] = await processor.process([
+        tx,
+      ]);
       // REFACTOR: Consider returning the error rather than throwing
       if (failedTxs.length) {
         this.log.warn(`Simulated tx ${txHash} fails: ${failedTxs[0].error}`, { txHash });
@@ -1347,6 +1385,14 @@ export class AztecNodeService implements AztecNode, AztecNodeAdmin, AztecNodeDeb
       }
 
       const [processedTx] = processedTxs;
+      // Cache public call metadata and revert reason for admin-only trace export.
+      // The capture happens before `PublicSimulationOutput` is constructed so the public
+      // RPC shape stays identical and private RPC consumers see no new fields.
+      this.txMetadataCache.set(txHash.toString(), {
+        callStackMetadata: callStackMetadataPerTx[0],
+        revertReason: processedTx.revertReason,
+      });
+      this.debugLogStore.storeLogs(txHash.toString(), debugLogs);
       return new PublicSimulationOutput(
         processedTx.revertReason,
         processedTx.globalVariables,
@@ -1360,10 +1406,15 @@ export class AztecNodeService implements AztecNode, AztecNodeAdmin, AztecNodeDeb
     }
   }
 
+  @trackSpan('AztecNodeService.isValidTx', (tx: Tx) => ({
+    [Attributes.TX_HASH]: tx.getTxHash().toString(),
+  }))
   public async isValidTx(
     tx: Tx,
     { isSimulation, skipFeeEnforcement }: { isSimulation?: boolean; skipFeeEnforcement?: boolean } = {},
   ): Promise<TxValidationResult> {
+    const txHash = tx.getTxHash().toString();
+    const startedAt = new Date().toISOString();
     const db = this.worldStateSynchronizer.getCommitted();
     const verifier = isSimulation ? undefined : this.rpcProofVerifier;
 
@@ -1394,7 +1445,106 @@ export class AztecNodeService implements AztecNode, AztecNodeAdmin, AztecNodeDeb
       this.log.getBindings(),
     );
 
-    return await validator.validateTx(tx);
+    try {
+      const result = await validator.validateTx(tx);
+      this.recordNodeDebuggerSpan(txHash, 'AztecNodeService.isValidTx', startedAt, 'ok', {
+        validationResult: result.result,
+        isSimulation: !!isSimulation,
+        skipFeeEnforcement: !!skipFeeEnforcement,
+      });
+      return result;
+    } catch (error) {
+      this.recordNodeDebuggerSpan(txHash, 'AztecNodeService.isValidTx', startedAt, 'error', {
+        isSimulation: !!isSimulation,
+        skipFeeEnforcement: !!skipFeeEnforcement,
+        errorMessage: String(error),
+      });
+      throw error;
+    }
+  }
+
+  public async getTraceStatus(txHash: TxHash): Promise<NodeTraceStatus> {
+    const receipt = await this.getTxReceipt(txHash);
+    const provenBlockNumber = await this.getProvenBlockNumber();
+    const known = receipt.status !== TxStatus.DROPPED;
+    const mapping = mapTxStatusToLifecycleState({
+      txStatus: receipt.status,
+      known,
+      receiptBlockNumber: receipt.blockNumber,
+      provenBlockNumber,
+    });
+    return {
+      schemaVersion: NODE_TRACE_STATUS_SCHEMA_VERSION,
+      txHash: txHash.toString(),
+      status: mapping.status,
+      lifecycleState: mapping.lifecycleState,
+      anchors: {
+        txHash: txHash.toString(),
+        ...(receipt.blockNumber !== undefined ? { l2BlockNumber: receipt.blockNumber } : {}),
+        ...(receipt.blockHash !== undefined ? { l2BlockHash: receipt.blockHash.toString() } : {}),
+      },
+    };
+  }
+
+  public async exportTraceSegment(request: NodeTraceSegmentRequest): Promise<NodeTraceSegment> {
+    if (request.policy !== 'strict') {
+      throw new BadRequestError(
+        `AZSEC_UNSAFE_EXPORT_CONTEXT: only 'strict' policy is allowed on admin trace export (got '${request.policy}')`,
+      );
+    }
+    if (request.schemaVersion !== NODE_TRACE_SEGMENT_REQUEST_SCHEMA_VERSION) {
+      throw new BadRequestError(
+        `Unsupported request schemaVersion '${request.schemaVersion}'; expected '${NODE_TRACE_SEGMENT_REQUEST_SCHEMA_VERSION}'`,
+      );
+    }
+
+    const parsedTxHash = TxHash.fromString(request.txHash);
+    const receipt = await this.getTxReceipt(parsedTxHash);
+    const provenBlockNumber = await this.getProvenBlockNumber();
+    const cachedMetadata = this.txMetadataCache.get(request.txHash);
+    const debugLogs = this.debugLogStore.getLogs(request.txHash);
+    const known = receipt.status !== TxStatus.DROPPED;
+
+    return buildNodeTraceSegment(request, {
+      txHash: request.txHash,
+      traceId: request.traceId,
+      txStatus: receipt.status,
+      known,
+      receiptBlockNumber: receipt.blockNumber,
+      receiptBlockHash: receipt.blockHash?.toString(),
+      provenBlockNumber,
+      callStackMetadata: cachedMetadata?.callStackMetadata,
+      revertReason: cachedMetadata?.revertReason
+        ? { message: cachedMetadata.revertReason.message ?? 'Transaction reverted' }
+        : undefined,
+      debugLogs,
+      nodeSpans: this.debuggerSpanProjector.take(request.txHash),
+    });
+  }
+
+  private recordNodeDebuggerSpan(
+    txHash: string,
+    name: string,
+    startedAt: string,
+    status: 'ok' | 'error',
+    attributes: Record<string, string | number | boolean> = {},
+  ): void {
+    if (!this.debuggerSpanProjector.enabled) {
+      return;
+    }
+
+    this.debuggerSpanProjector.record({
+      txHash,
+      span: makeSpanRecord({
+        name,
+        txHash,
+        spanId: `${txHash}:${name}:${startedAt}`,
+        startedAt,
+        endedAt: new Date().toISOString(),
+        status,
+        attributes,
+      }),
+    });
   }
 
   public getConfig(): Promise<AztecNodeAdminConfig> {

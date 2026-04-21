@@ -757,6 +757,7 @@ __metadata:
     "@aztec/blob-client": "workspace:^"
     "@aztec/blob-lib": "workspace:^"
     "@aztec/constants": "workspace:^"
+    "@aztec/debugger": "workspace:^"
     "@aztec/epoch-cache": "workspace:^"
     "@aztec/ethereum": "workspace:^"
     "@aztec/foundation": "workspace:^"

@@ -319,6 +319,55 @@ describe('aztec node', () => {
     });
   });
 
+  describe('trace segment export', () => {
+    const baseRequest = {
+      schemaVersion: 'aztec.node_segment_request.v1' as const,
+      txHash: '0x' + '1'.repeat(64),
+      policy: 'strict' as const,
+    };
+
+    beforeEach(() => {
+      p2p.getTxStatus.mockResolvedValue(undefined);
+      l2BlockSource.getSettledTxReceipt.mockResolvedValue(undefined);
+      l2BlockSource.getProvenBlockNumber.mockResolvedValue(BlockNumber.ZERO);
+    });
+
+    it('rejects non-strict policy with a BadRequestError (AZSEC_UNSAFE_EXPORT_CONTEXT)', async () => {
+      await expect(node.exportTraceSegment({ ...baseRequest, policy: 'balanced' as 'strict' })).rejects.toBeInstanceOf(
+        BadRequestError,
+      );
+      await expect(node.exportTraceSegment({ ...baseRequest, policy: 'balanced' as 'strict' })).rejects.toThrow(
+        /AZSEC_UNSAFE_EXPORT_CONTEXT/,
+      );
+    });
+
+    it('rejects mismatched schema version fail-closed', async () => {
+      await expect(
+        node.exportTraceSegment({ ...baseRequest, schemaVersion: 'aztec.node_segment_request.v0' as any }),
+      ).rejects.toBeInstanceOf(BadRequestError);
+    });
+
+    it('returns a dropped segment with AZSETTLE_DROPPED for unknown tx', async () => {
+      const segment = await node.exportTraceSegment(baseRequest);
+      expect(segment.schemaVersion).toBe('aztec.node_segment.v1');
+      expect(segment.lifecycleState).toBe('dropped');
+      expect(segment.status).toBe('error');
+      expect(segment.errors.map(e => e.code)).toContain('AZSETTLE_DROPPED');
+      const serialized = JSON.stringify(segment);
+      for (const forbidden of ['partialWitness', 'capsule', 'authWitness']) {
+        expect(serialized).not.toContain(forbidden);
+      }
+    });
+
+    it('getTraceStatus returns dropped lifecycle for unknown tx', async () => {
+      const { TxHash } = await import('@aztec/stdlib/tx');
+      const status = await node.getTraceStatus(TxHash.random());
+      expect(status.schemaVersion).toBe('aztec.node_trace_status.v1');
+      expect(status.lifecycleState).toBe('dropped');
+      expect(status.status).toBe('error');
+    });
+  });
+
   describe('getters', () => {
     describe('config', () => {
       it('returns the correct config', async () => {
