@@ -7,7 +7,8 @@
     "./recorder": "./dest/recorder/index.js",
     "./testing": "./dest/testing/index.js",
     "./bundle": "./dest/bundle/index.js",
-    "./errors": "./dest/errors/index.js"
+    "./errors": "./dest/errors/index.js",
+    "./node": "./dest/node/index.js"
   },
   "inherits": [
     "../package.common.json"
