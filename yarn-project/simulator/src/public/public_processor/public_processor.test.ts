@@ -376,4 +376,30 @@ describe('public_processor', () => {
     // On uncaught error, the public processor clears the tx-level cache entirely
     expect(contractClass).toBeUndefined();
   });
+
+  describe('CallStackMetadata passthrough (Plan 5)', () => {
+    it('returns undefined metadata slot for private-only txs', async () => {
+      const tx = await mockPrivateOnlyTx();
+
+      const [processed, failed, _usedTxs, _returns, _debugLogs, callStackMetadata] = await processor.process([tx]);
+
+      expect(processed.length).toBe(1);
+      expect(failed).toEqual([]);
+      expect(callStackMetadata).toEqual([undefined]);
+    });
+
+    it('surfaces CallStackMetadata[] for txs with public calls', async () => {
+      const tx = await mockTxWithPublicCalls();
+
+      const [processed, failed, _usedTxs, _returns, _debugLogs, callStackMetadata] = await processor.process([tx]);
+
+      expect(processed.length).toBe(1);
+      expect(failed).toEqual([]);
+      expect(callStackMetadata.length).toBe(1);
+      // The `PublicTxResult.empty()` fixture surfaces an empty CallStackMetadata[], which
+      // satisfies `every(x instanceof CallStackMetadata)` vacuously and is passed through
+      // as-is. A real simulator run would carry per-phase entries here.
+      expect(callStackMetadata[0]).toEqual([]);
+    });
+  });
 });

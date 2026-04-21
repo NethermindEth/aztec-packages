@@ -12,6 +12,7 @@ import {
   AvmCircuitPublicInputs,
   AvmExecutionHints,
   type AvmProvingRequest,
+  CallStackMetadata,
   PublicDataWrite,
   PublicSimulatorConfig,
 } from '@aztec/stdlib/avm';
@@ -160,13 +161,16 @@ export class PublicProcessor implements Traceable {
     txs: Iterable<Tx> | AsyncIterable<Tx>,
     limits: PublicProcessorLimits = {},
     validator: PublicProcessorValidator = {},
-  ): Promise<[ProcessedTx[], FailedTx[], Tx[], NestedProcessReturnValues[], DebugLog[]]> {
+  ): Promise<
+    [ProcessedTx[], FailedTx[], Tx[], NestedProcessReturnValues[], DebugLog[], (CallStackMetadata[] | undefined)[]]
+  > {
     const { maxTransactions, deadline, maxBlockGas, maxBlobFields, isBuildingProposal } = limits;
     const { preprocessValidator, nullifierCache } = validator;
     const result: ProcessedTx[] = [];
     const usedTxs: Tx[] = [];
     const failed: FailedTx[] = [];
     const debugLogs: DebugLog[] = [];
+    const callStackMetadataPerTx: (CallStackMetadata[] | undefined)[] = [];
     const timer = new Timer();
 
     let totalSizeInBytes = 0;
@@ -244,7 +248,7 @@ export class PublicProcessor implements Traceable {
       this.contractsDB.createCheckpoint();
 
       try {
-        const [processedTx, returnValues, txDebugLogs] = await this.processTx(tx, deadline);
+        const [processedTx, returnValues, txDebugLogs, txCallStackMetadata] = await this.processTx(tx, deadline);
 
         // Inject a fake processing failure after N txs if requested
         const fakeThrowAfter = this.opts.fakeThrowAfterProcessingTxCount;
@@ -299,6 +303,7 @@ export class PublicProcessor implements Traceable {
         usedTxs.push(tx);
         returns = returns.concat(returnValues);
         debugLogs.push(...txDebugLogs);
+        callStackMetadataPerTx.push(txCallStackMetadata);
 
         this.debugLogStore.storeLogs(processedTx.hash.toString(), txDebugLogs);
 
@@ -372,7 +377,7 @@ export class PublicProcessor implements Traceable {
       totalSizeInBytes,
     });
 
-    return [result, failed, usedTxs, returns, debugLogs];
+    return [result, failed, usedTxs, returns, debugLogs, callStackMetadataPerTx];
   }
 
   private async checkWorldStateUnchanged(
@@ -395,8 +400,8 @@ export class PublicProcessor implements Traceable {
   private async processTx(
     tx: Tx,
     deadline: Date | undefined,
-  ): Promise<[ProcessedTx, NestedProcessReturnValues[], DebugLog[]]> {
-    const [time, [processedTx, returnValues, debugLogs]] = await elapsed(() =>
+  ): Promise<[ProcessedTx, NestedProcessReturnValues[], DebugLog[], CallStackMetadata[] | undefined]> {
+    const [time, [processedTx, returnValues, debugLogs, callStackMetadata]] = await elapsed(() =>
       this.processTxWithinDeadline(tx, deadline),
     );
 
@@ -421,7 +426,7 @@ export class PublicProcessor implements Traceable {
       },
     );
 
-    return [processedTx, returnValues ?? [], debugLogs];
+    return [processedTx, returnValues ?? [], debugLogs, callStackMetadata];
   }
 
   private async doTreeInsertionsForPrivateOnlyTx(processedTx: ProcessedTx): Promise<void> {
@@ -455,9 +460,10 @@ export class PublicProcessor implements Traceable {
   private async processTxWithinDeadline(
     tx: Tx,
     deadline: Date | undefined,
-  ): Promise<[ProcessedTx, NestedProcessReturnValues[] | undefined, DebugLog[]]> {
-    const innerProcessFn: () => Promise<[ProcessedTx, NestedProcessReturnValues[] | undefined, DebugLog[]]> =
-      tx.hasPublicCalls() ? () => this.processTxWithPublicCalls(tx) : () => this.processPrivateOnlyTx(tx);
+  ): Promise<[ProcessedTx, NestedProcessReturnValues[] | undefined, DebugLog[], CallStackMetadata[] | undefined]> {
+    const innerProcessFn: () => Promise<
+      [ProcessedTx, NestedProcessReturnValues[] | undefined, DebugLog[], CallStackMetadata[] | undefined]
+    > = tx.hasPublicCalls() ? () => this.processTxWithPublicCalls(tx) : () => this.processPrivateOnlyTx(tx);
 
     // Fake a delay per tx if instructed (used for tests)
     const fakeDelayPerTxMs = this.opts.fakeProcessingDelayPerTxMs;
@@ -525,7 +531,7 @@ export class PublicProcessor implements Traceable {
   @trackSpan('PublicProcessor.processPrivateOnlyTx', (tx: Tx) => ({
     [Attributes.TX_HASH]: tx.getTxHash().toString(),
   }))
-  private async processPrivateOnlyTx(tx: Tx): Promise<[ProcessedTx, undefined, DebugLog[]]> {
+  private async processPrivateOnlyTx(tx: Tx): Promise<[ProcessedTx, undefined, DebugLog[], undefined]> {
     const gasFees = this.globalVariables.gasFees;
     const transactionFee = computeTransactionFee(gasFees, tx.data.constants.txContext.gasSettings, tx.data.gasUsed);
 
@@ -550,18 +556,19 @@ export class PublicProcessor implements Traceable {
 
     this.contractsDB.addNewContracts(tx);
 
-    return [processedTx, undefined, []];
+    return [processedTx, undefined, [], undefined];
   }
 
   @trackSpan('PublicProcessor.processTxWithPublicCalls', tx => ({
     [Attributes.TX_HASH]: tx.getTxHash().toString(),
   }))
-  private async processTxWithPublicCalls(tx: Tx): Promise<[ProcessedTx, NestedProcessReturnValues[], DebugLog[]]> {
+  private async processTxWithPublicCalls(
+    tx: Tx,
+  ): Promise<[ProcessedTx, NestedProcessReturnValues[], DebugLog[], CallStackMetadata[] | undefined]> {
     const timer = new Timer();
 
     const result = await this.publicTxSimulator.simulate(tx);
-    // TODO: use the callStackMetadata here to extract more data about public execution
-    const { hints, publicInputs, publicTxEffect, gasUsed, revertCode /*callStackMetadata*/ } = result;
+    const { hints, publicInputs, publicTxEffect, gasUsed, revertCode, callStackMetadata } = result;
 
     const contractClassLogs = revertCode.isOK()
       ? tx.getContractClassLogs()
@@ -594,7 +601,14 @@ export class PublicProcessor implements Traceable {
       revertReason,
     );
 
-    return [processedTx, appLogicReturnValues, result.logs ?? []];
+    // Surface CallStackMetadata[] for the node's bounded debug cache. When the simulator still
+    // returns the legacy NestedProcessReturnValues[] shape (TS path), report undefined so the
+    // node does not mistake it for a public call-stack tree.
+    const callStackMetadataOut = callStackMetadata.every(entry => entry instanceof CallStackMetadata)
+      ? (callStackMetadata as CallStackMetadata[])
+      : undefined;
+
+    return [processedTx, appLogicReturnValues, result.logs ?? [], callStackMetadataOut];
   }
 
   /**

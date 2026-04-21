@@ -165,7 +165,7 @@ describe('CheckpointBuilder', () => {
     async function mockSuccessfulBlock() {
       const block = await L2Block.random(blockNumber);
       lightweightCheckpointBuilder.addBlock.mockResolvedValue({ block, timings: {} });
-      processor.process.mockResolvedValue([[{ hash: TxHash.random() } as ProcessedTx], [], [], [], []]);
+      processor.process.mockResolvedValue([[{ hash: TxHash.random() } as ProcessedTx], [], [], [], [], []]);
       return block;
     }
 
@@ -207,6 +207,7 @@ describe('CheckpointBuilder', () => {
         [], // usedTxs
         [], // returnValues
         [], // debugLogs
+        [], // callStackMetadata
       ]);
 
       const result = await checkpointBuilder.buildBlock([], blockNumber, 1000n, validatorOpts());
@@ -228,6 +229,7 @@ describe('CheckpointBuilder', () => {
         [], // usedTxs
         [], // returnValues
         [], // debugLogs
+        [], // callStackMetadata
       ]);
 
       const result = await checkpointBuilder.buildBlock([], blockNumber, 1000n, validatorOpts({ minValidTxs: 0 }));
@@ -245,6 +247,7 @@ describe('CheckpointBuilder', () => {
         [], // usedTxs
         [], // returnValues
         [], // debugLogs
+        [], // callStackMetadata
       ]);
 
       await expect(
@@ -264,6 +267,7 @@ describe('CheckpointBuilder', () => {
         [], // usedTxs
         [], // returnValues
         [], // debugLogs
+        [], // callStackMetadata
       ]);
 
       const err = await checkpointBuilder
@@ -280,7 +284,7 @@ describe('CheckpointBuilder', () => {
       const expectedBlock = await L2Block.random(blockNumber, { txsPerBlock: 0 });
       lightweightCheckpointBuilder.addBlock.mockResolvedValue({ block: expectedBlock, timings: {} });
 
-      processor.process.mockResolvedValue([[], [], [], [], []]);
+      processor.process.mockResolvedValue([[], [], [], [], [], []]);
 
       const result = await checkpointBuilder.buildBlock([], blockNumber, 1000n, validatorOpts());
 
@@ -572,7 +576,7 @@ describe('CheckpointBuilder', () => {
 
       const expectedBlock = await L2Block.random(blockNumber);
       lightweightCheckpointBuilder.addBlock.mockResolvedValue({ block: expectedBlock, timings: {} });
-      processor.process.mockResolvedValue([[{ hash: Fr.random() } as unknown as ProcessedTx], [], [], [], []]);
+      processor.process.mockResolvedValue([[{ hash: Fr.random() } as unknown as ProcessedTx], [], [], [], [], []]);
 
       // Build block 2
       await checkpointBuilder.buildBlock([], blockNumber, 1000n, blockBuilderOpts);
@@ -590,7 +594,7 @@ describe('CheckpointBuilder', () => {
 
       const expectedBlock = await L2Block.random(blockNumber);
       lightweightCheckpointBuilder.addBlock.mockResolvedValue({ block: expectedBlock, timings: {} });
-      processor.process.mockResolvedValue([[{ hash: Fr.random() } as unknown as ProcessedTx], [], [], [], []]);
+      processor.process.mockResolvedValue([[{ hash: Fr.random() } as unknown as ProcessedTx], [], [], [], [], []]);
 
       const capturedL2GasLimits: number[] = [];
 
@@ -623,7 +627,7 @@ describe('CheckpointBuilder', () => {
 
       const expectedBlock = await L2Block.random(blockNumber);
       lightweightCheckpointBuilder.addBlock.mockResolvedValue({ block: expectedBlock, timings: {} });
-      processor.process.mockResolvedValue([[{ hash: Fr.random() } as unknown as ProcessedTx], [], [], [], []]);
+      processor.process.mockResolvedValue([[{ hash: Fr.random() } as unknown as ProcessedTx], [], [], [], [], []]);
 
       const capturedL2GasLimits: number[] = [];
 
@@ -661,7 +665,7 @@ describe('CheckpointBuilder', () => {
 
       const expectedBlock = await L2Block.random(blockNumber);
       lightweightCheckpointBuilder.addBlock.mockResolvedValue({ block: expectedBlock, timings: {} });
-      processor.process.mockResolvedValue([[{ hash: Fr.random() } as unknown as ProcessedTx], [], [], [], []]);
+      processor.process.mockResolvedValue([[{ hash: Fr.random() } as unknown as ProcessedTx], [], [], [], [], []]);
 
       // Explicit per-block limit (100k) is TIGHTER than redistribution.
       // No prior blocks: remaining=1M, 5 remaining, fairShare=ceil(1M/5*1.2)=240k.
