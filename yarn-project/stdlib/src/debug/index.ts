@@ -4,3 +4,4 @@ export * from './errors.js';
 export * from './redaction.js';
 export * from './trace.js';
 export * from './bundle.js';
+export * from './node_segment.js';

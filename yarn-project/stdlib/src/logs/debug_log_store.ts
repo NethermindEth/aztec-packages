@@ -12,6 +12,8 @@ export interface DebugLogStore {
   storeLogs(txHash: string, logs: DebugLog[]): void;
   /** Decorate a TxReceipt with any stored debug logs for the given tx. */
   decorateReceiptWithLogs(txHash: string, receipt: TxReceipt): void;
+  /** Return stored debug logs for a tx, or an empty array if none or if disabled. */
+  getLogs(txHash: string): DebugLog[];
   /** Whether debug log collection is enabled. */
   readonly isEnabled: boolean;
 }
@@ -23,6 +25,9 @@ export class NullDebugLogStore implements DebugLogStore {
   }
   decorateReceiptWithLogs(_txHash: string, _receipt: TxReceipt): void {
     return;
+  }
+  getLogs(_txHash: string): DebugLog[] {
+    return [];
   }
   get isEnabled(): boolean {
     return false;
@@ -46,6 +51,10 @@ export class InMemoryDebugLogStore implements DebugLogStore {
         receipt.debugLogs = debugLogs;
       }
     }
+  }
+
+  getLogs(txHash: string): DebugLog[] {
+    return this.map.get(txHash) ?? [];
   }
 
   get isEnabled(): boolean {

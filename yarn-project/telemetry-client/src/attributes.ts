@@ -161,3 +161,20 @@ export const HA_NODE_ID = 'aztec.ha_signer.node_id';
 
 /** The address of an attester (validator) participating in consensus */
 export const ATTESTER_ADDRESS = 'aztec.attester.address';
+
+// Span/log attributes only — never attach to metrics (see DEBUGGER_TECH_SPEC.md
+// § Telemetry Semantic Conventions metric-cardinality rule).
+/** OTel trace ID joined with the debugger trace. */
+export const TRACE_ID = 'aztec.trace.id';
+/** Debugger trace phase: pxe_execution | proving | node_submission | settlement. */
+export const TRACE_PHASE = 'aztec.trace.phase';
+/** Debugger trace component: wallet | pxe | simulator | aztec_node | ... */
+export const TRACE_COMPONENT = 'aztec.trace.component';
+/** Debugger trace execution kind: private | public | utility | kernel | avm | l1. */
+export const TRACE_EXEC_KIND = 'aztec.trace.exec_kind';
+/** Debugger sensitivity marker: public | redacted | secret_local. */
+export const TRACE_SENSITIVITY = 'aztec.trace.sensitivity';
+/** Provisional trace ID generated client-side before a full OTel context is available. */
+export const PROVISIONAL_TRACE_ID = 'aztec.trace.provisional_id';
+/** Depth of a public call frame in the recursion tree. */
+export const CALL_DEPTH = 'aztec.call.depth';
