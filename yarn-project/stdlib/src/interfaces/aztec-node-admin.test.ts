@@ -1,7 +1,16 @@
 import { EthAddress } from '@aztec/foundation/eth-address';
 import { type JsonRpcTestContext, createJsonRpcTestSetup } from '@aztec/foundation/json-rpc/test';
 
+import {
+  NODE_TRACE_SEGMENT_REQUEST_SCHEMA_VERSION,
+  NODE_TRACE_SEGMENT_SCHEMA_VERSION,
+  NODE_TRACE_STATUS_SCHEMA_VERSION,
+  type NodeTraceSegment,
+  type NodeTraceSegmentRequest,
+  type NodeTraceStatus,
+} from '../debug/node_segment.js';
 import { type Offense, OffenseType } from '../slashing/index.js';
+import { TxHash } from '../tx/tx_hash.js';
 import { type AztecNodeAdmin, AztecNodeAdminApiSchema } from './aztec-node-admin.js';
 import type { SequencerConfig } from './configs.js';
 import type { ProverConfig } from './prover-client.js';
@@ -70,6 +79,22 @@ describe('AztecNodeAdminApiSchema', () => {
 
   it('reloadKeystore', async () => {
     await context.client.reloadKeystore();
+  });
+
+  it('exportTraceSegment', async () => {
+    const request: NodeTraceSegmentRequest = {
+      schemaVersion: NODE_TRACE_SEGMENT_REQUEST_SCHEMA_VERSION,
+      txHash: '0xabc',
+      policy: 'strict',
+    };
+    const segment = await context.client.exportTraceSegment(request);
+    expect(segment.schemaVersion).toBe(NODE_TRACE_SEGMENT_SCHEMA_VERSION);
+    expect(segment.txHash).toBe('0xabc');
+  });
+
+  it('getTraceStatus', async () => {
+    const status = await context.client.getTraceStatus(TxHash.random());
+    expect(status.schemaVersion).toBe(NODE_TRACE_STATUS_SCHEMA_VERSION);
   });
 });
 
@@ -154,5 +179,29 @@ class MockAztecNodeAdmin implements AztecNodeAdmin {
   }
   reloadKeystore(): Promise<void> {
     return Promise.resolve();
+  }
+  exportTraceSegment(request: NodeTraceSegmentRequest): Promise<NodeTraceSegment> {
+    expect(request.policy).toBe('strict');
+    return Promise.resolve({
+      schemaVersion: NODE_TRACE_SEGMENT_SCHEMA_VERSION,
+      txHash: request.txHash,
+      anchors: { txHash: request.txHash },
+      status: 'ok',
+      lifecycleState: 'finalized',
+      spans: [],
+      callFrames: [],
+      errors: [],
+      createdAt: '2026-04-21T00:00:00.000Z',
+      segmentRedactionSalt: 'a'.repeat(64),
+    });
+  }
+  getTraceStatus(txHash: TxHash): Promise<NodeTraceStatus> {
+    return Promise.resolve({
+      schemaVersion: NODE_TRACE_STATUS_SCHEMA_VERSION,
+      txHash: txHash.toString(),
+      status: 'ok',
+      lifecycleState: 'finalized',
+      anchors: { txHash: txHash.toString() },
+    });
   }
 }

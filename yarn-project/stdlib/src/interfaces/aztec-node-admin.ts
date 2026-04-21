@@ -2,9 +2,18 @@ import { createSafeJsonRpcClient, defaultFetch } from '@aztec/foundation/json-rp
 
 import { z } from 'zod';
 
+import {
+  type NodeTraceSegment,
+  type NodeTraceSegmentRequest,
+  NodeTraceSegmentRequestSchema,
+  NodeTraceSegmentSchema,
+  type NodeTraceStatus,
+  NodeTraceStatusSchema,
+} from '../debug/node_segment.js';
 import type { ApiSchemaFor } from '../schemas/schemas.js';
 import { optional } from '../schemas/schemas.js';
 import { type Offense, OffenseSchema } from '../slashing/index.js';
+import { TxHash } from '../tx/tx_hash.js';
 import { type ComponentsVersions, getVersioningResponseHandler } from '../versioning/index.js';
 import { type ArchiverSpecificConfig, ArchiverSpecificConfigSchema } from './archiver.js';
 import { type SequencerConfig, SequencerConfigSchema } from './configs.js';
@@ -49,6 +58,21 @@ export interface AztecNodeAdmin {
 
   /** Returns all offenses applicable for the given round. */
   getSlashOffenses(round: bigint | 'all' | 'current'): Promise<Offense[]>;
+
+  /**
+   * Exports an admin-only node trace segment for a tx. Always `'strict'` policy.
+   *
+   * @param request - Validated `NodeTraceSegmentRequest`. Non-strict policies are rejected.
+   * @returns A deterministic `NodeTraceSegment` for joining with wallet/PXE traces.
+   */
+  exportTraceSegment(request: NodeTraceSegmentRequest): Promise<NodeTraceSegment>;
+
+  /**
+   * Lightweight probe for tx settlement lifecycle state (admin-only).
+   *
+   * @param txHash - The tx hash to look up.
+   */
+  getTraceStatus(txHash: TxHash): Promise<NodeTraceStatus>;
 
   /**
    * Reloads keystore configuration from disk.
@@ -107,6 +131,8 @@ export const AztecNodeAdminApiSchema: ApiSchemaFor<AztecNodeAdmin> = {
     .args(z.union([z.bigint(), z.literal('all'), z.literal('current')]))
     .returns(z.array(OffenseSchema)),
   reloadKeystore: z.function().returns(z.void()),
+  exportTraceSegment: z.function().args(NodeTraceSegmentRequestSchema).returns(NodeTraceSegmentSchema),
+  getTraceStatus: z.function().args(TxHash.schema).returns(NodeTraceStatusSchema),
 };
 
 export function createAztecNodeAdminClient(
