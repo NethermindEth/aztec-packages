@@ -28,6 +28,14 @@ describe('AztecNodeDebugApiSchema', () => {
   });
 });
 
+describe('AztecNodeDebugApiSchema public-debug contract', () => {
+  it('does not expose admin-only trace export on the node debug RPC surface', () => {
+    const keys = Object.keys(AztecNodeDebugApiSchema);
+    expect(keys).not.toContain('exportTraceSegment');
+    expect(keys).not.toContain('getTraceStatus');
+  });
+});
+
 class MockAztecNodeDebug implements AztecNodeDebug {
   mineBlock(): Promise<void> {
     return Promise.resolve();

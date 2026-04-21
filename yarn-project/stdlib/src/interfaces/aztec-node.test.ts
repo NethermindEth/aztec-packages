@@ -511,6 +511,14 @@ describe('AztecNodeApiSchema', () => {
   });
 });
 
+describe('AztecNodeApiSchema public-RPC contract', () => {
+  it('does not expose admin-only trace export on the public node RPC surface', () => {
+    const keys = Object.keys(AztecNodeApiSchema);
+    expect(keys).not.toContain('exportTraceSegment');
+    expect(keys).not.toContain('getTraceStatus');
+  });
+});
+
 class MockAztecNode implements AztecNode {
   public validatorStats: ValidatorsStats | undefined;
   public singleValidatorStats: SingleValidatorStats | undefined;
